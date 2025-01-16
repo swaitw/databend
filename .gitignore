@@ -1,24 +1,20 @@
 # IntelliJ project files
-.idea/*
+**/.idea/*
 
 # visual studio code files
 .vscode
+.dir-locals.el
+.bash_history
+.mysql_history
 
 # Rust
-target/*
-distro/*
-cli/e2e/bendctl
-.cargo/config.toml
+target/
 
 # OS related
 ### MacOS ###
 .DS_Store
 .AppleDouble
 .LSOverride
-
-### Linux(include WSL) ###
-
-### Windows ###
 
 # profile
 flamegraph.*
@@ -31,17 +27,52 @@ perf.*
 *.err
 *.error
 *.swp
-_local_fs/*
-_meta*/*
-stateless_test_data/*
-**/_logs*/*
+_local_fs/
+**/_meta*/
+stateless_test_data/
+**/_logs*/
+_data/
+_databend_data/
+_databend_meta/
+_cache/
+_tmp/
+tls/certs/
+.databend/
+checksums.txt
+distro/
+dist/
+test/
+tests/longrun/_*.csv
+tests/longrun/**/_*.csv
+tests/sqllogictests/data/*
+
+# fuzz
+hfuzz_target/
+hfuzz_workspace/
 
 # for tests in mac
 *.stderr-e
 *.stdout-e
 tests/perfs/*-result.json
+docker/build-tool/dev_setup.sh
+docker/build-tool/rust-toolchain.toml
 
 # python
 venv/
+*.pyc
+.venv/
+__pycache__/
+.python-version
 
-tls/certs/*
+*.zip
+
+# tpch data set
+benchmark/tpch/data
+# clickbench results
+benchmark/clickbench/results
+
+# direnv test files
+.envrc
+
+# lychee
+.lycheecache

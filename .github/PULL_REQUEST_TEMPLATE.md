@@ -1,28 +1,26 @@
-I hereby agree to the terms of the CLA available at: https://databend.rs/policies/cla/
+I hereby agree to the terms of the CLA available at: https://docs.databend.com/dev/policies/cla/
 
 ## Summary
 
-Summary about this PR
+<!--
+Briefly describe what this PR aims to solve. Include background context that will help reviewers understand the purpose of the PR.
 
-## Changelog
+- fixes: #[Link the issue here]
+-->
 
-- New Feature
-- Bug Fix
-- Improvement
-- Performance Improvement
-- Build/Testing/CI
-- Need Documentation (Need to add documentation to https://databend.rs)
-- Documentation
-- Other 
-- Not for changelog (changelog entry is not required)
+## Tests
 
-## Related Issues
+- [ ] Unit Test
+- [ ] Logic Test
+- [ ] Benchmark Test
+- [ ] No Test - _Explain why_
 
-Fixes #issue
+## Type of change
 
-## Test Plan
-
-Unit Tests
-
-Stateless Tests
-
+- [ ] Bug Fix (non-breaking change which fixes an issue)
+- [ ] New Feature (non-breaking change which adds functionality)
+- [ ] Breaking Change (fix or feature that could cause existing functionality not to work as expected)
+- [ ] Documentation Update
+- [ ] Refactoring
+- [ ] Performance Improvement
+- [ ] Other (please describe):
