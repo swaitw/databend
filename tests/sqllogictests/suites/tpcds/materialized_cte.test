@@ -1,0 +1,2089 @@
+statement ok
+set sandbox_tenant = 'test_tenant';
+
+statement ok
+use tpcds;
+
+# Q1
+query I
+WITH customer_total_return AS materialized
+  (SELECT sr_customer_sk AS ctr_customer_sk,
+          sr_store_sk AS ctr_store_sk,
+          sum(sr_return_amt) AS ctr_total_return
+   FROM store_returns,
+        date_dim
+   WHERE sr_returned_date_sk = d_date_sk
+     AND d_year = 2000
+   GROUP BY sr_customer_sk,
+            sr_store_sk)
+SELECT c_customer_id
+FROM customer_total_return ctr1,
+     store,
+     customer
+WHERE ctr1.ctr_total_return >
+    (SELECT avg(ctr_total_return)*1.2
+     FROM customer_total_return ctr2
+     WHERE ctr1.ctr_store_sk = ctr2.ctr_store_sk)
+  AND s_store_sk = ctr1.ctr_store_sk
+  AND s_state = 'TN'
+  AND ctr1.ctr_customer_sk = c_customer_sk
+ORDER BY c_customer_id
+LIMIT 100;
+----
+AAAAAAAAAAABBAAA
+AAAAAAAAAAADBAAA
+AAAAAAAAAAADBAAA
+AAAAAAAAAACJAAAA
+AAAAAAAAAACNAAAA
+AAAAAAAAAADEBAAA
+AAAAAAAAAADFBAAA
+AAAAAAAAAADGAAAA
+AAAAAAAAAADKAAAA
+AAAAAAAAAAEAAAAA
+AAAAAAAAAAEBBAAA
+AAAAAAAAAAEDAAAA
+AAAAAAAAAAEGBAAA
+AAAAAAAAAAFAAAAA
+AAAAAAAAAAFABAAA
+AAAAAAAAAAFIBAAA
+AAAAAAAAAAGAAAAA
+AAAAAAAAAAGGAAAA
+AAAAAAAAAAHCAAAA
+AAAAAAAAAAHCAAAA
+AAAAAAAAAAHDBAAA
+AAAAAAAAAAHGAAAA
+AAAAAAAAAAHIAAAA
+AAAAAAAAAAICAAAA
+AAAAAAAAAAIDAAAA
+AAAAAAAAAAIGAAAA
+AAAAAAAAAAJIAAAA
+AAAAAAAAAAKBBAAA
+AAAAAAAAAAKGAAAA
+AAAAAAAAAAKJAAAA
+AAAAAAAAAAKMAAAA
+AAAAAAAAAALEBAAA
+AAAAAAAAAAMBBAAA
+AAAAAAAAAAMFBAAA
+AAAAAAAAAAMFBAAA
+AAAAAAAAAAMPAAAA
+AAAAAAAAAANGAAAA
+AAAAAAAAAANJAAAA
+AAAAAAAAAAOCAAAA
+AAAAAAAAAAOJAAAA
+AAAAAAAAAAOPAAAA
+AAAAAAAAAAPCBAAA
+AAAAAAAAAAPPAAAA
+AAAAAAAAABAAAAAA
+AAAAAAAAABAFBAAA
+AAAAAAAAABBFAAAA
+AAAAAAAAABBIAAAA
+AAAAAAAAABBLAAAA
+AAAAAAAAABBLAAAA
+AAAAAAAAABCBBAAA
+AAAAAAAAABCJAAAA
+AAAAAAAAABDCAAAA
+AAAAAAAAABDIAAAA
+AAAAAAAAABDNAAAA
+AAAAAAAAABEDAAAA
+AAAAAAAAABEFBAAA
+AAAAAAAAABEGBAAA
+AAAAAAAAABEPAAAA
+AAAAAAAAABFABAAA
+AAAAAAAAABFIBAAA
+AAAAAAAAABFLAAAA
+AAAAAAAAABFMAAAA
+AAAAAAAAABFPAAAA
+AAAAAAAAABFPAAAA
+AAAAAAAAABGEAAAA
+AAAAAAAAABGIBAAA
+AAAAAAAAABGKAAAA
+AAAAAAAAABGLAAAA
+AAAAAAAAABIGAAAA
+AAAAAAAAABJAAAAA
+AAAAAAAAABJBBAAA
+AAAAAAAAABJEAAAA
+AAAAAAAAABJHAAAA
+AAAAAAAAABJIAAAA
+AAAAAAAAABLBAAAA
+AAAAAAAAABLBAAAA
+AAAAAAAAABLPAAAA
+AAAAAAAAABNEBAAA
+AAAAAAAAABOCAAAA
+AAAAAAAAABOFBAAA
+AAAAAAAAABPFBAAA
+AAAAAAAAACACBAAA
+AAAAAAAAACAHBAAA
+AAAAAAAAACALAAAA
+AAAAAAAAACANAAAA
+AAAAAAAAACBEBAAA
+AAAAAAAAACBIBAAA
+AAAAAAAAACBKAAAA
+AAAAAAAAACBPAAAA
+AAAAAAAAACCEBAAA
+AAAAAAAAACDABAAA
+AAAAAAAAACDABAAA
+AAAAAAAAACDDAAAA
+AAAAAAAAACDGAAAA
+AAAAAAAAACDHBAAA
+AAAAAAAAACEBBAAA
+AAAAAAAAACECBAAA
+AAAAAAAAACECBAAA
+AAAAAAAAACFAAAAA
+AAAAAAAAACFABAAA
+
+query I
+WITH results AS materialized
+  (SELECT i_item_id,
+          s_state,
+          0 AS g_state,
+          ss_quantity agg1,
+          ss_list_price agg2,
+          ss_coupon_amt agg3,
+          ss_sales_price agg4
+   FROM store_sales,
+        customer_demographics,
+        date_dim,
+        store,
+        item
+   WHERE ss_sold_date_sk = d_date_sk
+     AND ss_item_sk = i_item_sk
+     AND ss_store_sk = s_store_sk
+     AND ss_cdemo_sk = cd_demo_sk
+     AND cd_gender = 'M'
+     AND cd_marital_status = 'S'
+     AND cd_education_status = 'College'
+     AND d_year = 2002
+     AND s_state = 'TN' )
+SELECT i_item_id,
+       s_state,
+       g_state,
+       agg1,
+       agg2,
+       agg3,
+       agg4
+FROM
+  ( SELECT i_item_id,
+           s_state,
+           0 AS g_state,
+           avg(agg1) agg1,
+           avg(agg2) agg2,
+           avg(agg3) agg3,
+           avg(agg4) agg4
+   FROM results
+   GROUP BY i_item_id ,
+            s_state
+   ) foo
+ORDER BY i_item_id NULLS FIRST,
+         s_state NULLS FIRST
+LIMIT 100;
+----
+AAAAAAAAAAABAAAA TN 0 38.0 144.34000000 2034.74000000 101.03000000
+AAAAAAAAAAAEAAAA TN 0 64.0 31.97000000 0.00000000 5.43000000
+AAAAAAAAAABAAAAA TN 0 98.0 72.35000000 0.00000000 2.17000000
+AAAAAAAAAACAAAAA TN 0 51.666666666666664 57.20333333 76.22333333 34.14666667
+AAAAAAAAAACDAAAA TN 0 70.5 38.03000000 0.00000000 4.09500000
+AAAAAAAAAADBAAAA TN 0 28.0 80.17000000 0.00000000 23.24000000
+AAAAAAAAAADCAAAA TN 0 58.0 35.48000000 0.00000000 22.35000000
+AAAAAAAAAAEBAAAA TN 0 2.0 130.66000000 0.00000000 7.83000000
+AAAAAAAAAAEDAAAA TN 0 71.5 82.81500000 486.83500000 42.23000000
+AAAAAAAAAAEEAAAA TN 0 66.0 96.22000000 0.00000000 91.40000000
+AAAAAAAAAAFCAAAA TN 0 4.0 140.50000000 0.00000000 56.20000000
+AAAAAAAAAAFDAAAA TN 0 14.0 1.90000000 0.00000000 0.26000000
+AAAAAAAAAAGBAAAA TN 0 37.0 99.46500000 0.00000000 69.06000000
+AAAAAAAAAAGCAAAA TN 0 23.0 69.00000000 1166.44000000 51.75000000
+AAAAAAAAAAGEAAAA TN 0 49.0 53.58000000 0.00000000 35.33500000
+AAAAAAAAAAHAAAAA TN 0 7.0 83.16000000 0.00000000 40.74000000
+AAAAAAAAAAHBAAAA TN 0 37.0 52.59000000 0.00000000 23.66000000
+AAAAAAAAAAHDAAAA TN 0 21.0 157.98000000 0.00000000 64.77000000
+AAAAAAAAAAIAAAAA TN 0 49.0 2.90000000 0.00000000 0.52000000
+AAAAAAAAAAKBAAAA TN 0 13.0 105.96500000 64.05000000 27.51000000
+AAAAAAAAAALAAAAA TN 0 36.0 139.25000000 2136.90000000 121.14000000
+AAAAAAAAAALCAAAA TN 0 28.0 35.60000000 0.00000000 21.36000000
+AAAAAAAAAALDAAAA TN 0 50.0 NULL NULL NULL
+AAAAAAAAAANAAAAA TN 0 44.0 55.85500000 750.17500000 46.48500000
+AAAAAAAAAANBAAAA TN 0 40.0 92.23000000 0.00000000 36.89000000
+AAAAAAAAAAOAAAAA TN 0 16.0 171.83000000 0.00000000 75.60000000
+AAAAAAAAAAOCAAAA TN 0 17.0 45.48000000 0.00000000 10.91000000
+AAAAAAAAAAODAAAA TN 0 42.0 88.11000000 310.81000000 35.24000000
+AAAAAAAAAAPBAAAA TN 0 54.0 112.10000000 0.00000000 22.49000000
+AAAAAAAAABAAAAAA TN 0 70.0 41.97000000 0.00000000 26.02000000
+AAAAAAAAABABAAAA TN 0 28.0 70.21000000 0.00000000 30.89000000
+AAAAAAAAABAEAAAA TN 0 11.0 59.16000000 0.00000000 44.37000000
+AAAAAAAAABCBAAAA TN 0 45.5 74.21000000 0.00000000 11.47000000
+AAAAAAAAABCCAAAA TN 0 43.0 133.75000000 0.00000000 44.13000000
+AAAAAAAAABDAAAAA TN 0 63.0 46.73500000 560.69500000 21.65500000
+AAAAAAAAABDBAAAA TN 0 32.0 107.95000000 0.00000000 61.53000000
+AAAAAAAAABDDAAAA TN 0 83.0 50.77500000 643.14000000 36.99000000
+AAAAAAAAABDEAAAA TN 0 38.0 33.42500000 0.00000000 9.72500000
+AAAAAAAAABEDAAAA TN 0 79.0 62.12000000 0.00000000 48.45000000
+AAAAAAAAABFBAAAA TN 0 52.0 49.66000000 0.00000000 32.27000000
+AAAAAAAAABFCAAAA TN 0 30.0 59.09000000 0.00000000 49.63000000
+AAAAAAAAABGAAAAA TN 0 64.0 84.08000000 0.00000000 51.28000000
+AAAAAAAAABGBAAAA TN 0 78.0 118.07000000 0.00000000 70.84000000
+AAAAAAAAABGEAAAA TN 0 37.5 93.72500000 480.27500000 87.43000000
+AAAAAAAAABHAAAAA TN 0 93.0 63.79000000 0.00000000 43.37000000
+AAAAAAAAABHCAAAA TN 0 60.5 74.60500000 0.00000000 26.55000000
+AAAAAAAAABIBAAAA TN 0 76.0 86.70000000 0.00000000 83.23000000
+AAAAAAAAABJAAAAA TN 0 31.5 72.97500000 0.00000000 37.29500000
+AAAAAAAAABJBAAAA TN 0 43.0 74.32000000 0.00000000 28.98000000
+AAAAAAAAABJDAAAA TN 0 64.0 13.21500000 270.54500000 11.51000000
+AAAAAAAAABKAAAAA TN 0 80.5 80.30000000 334.16000000 30.01500000
+AAAAAAAAABKCAAAA TN 0 62.0 33.50000000 0.00000000 18.09000000
+AAAAAAAAABLBAAAA TN 0 78.5 74.44500000 65.86500000 58.18000000
+AAAAAAAAABMAAAAA TN 0 92.0 42.98000000 234.82000000 28.36000000
+AAAAAAAAABMDAAAA TN 0 75.0 85.62000000 0.00000000 75.34000000
+AAAAAAAAABNAAAAA TN 0 55.5 77.09500000 0.00000000 56.43000000
+AAAAAAAAABOBAAAA TN 0 70.0 33.48000000 0.00000000 10.71000000
+AAAAAAAAABPAAAAA TN 0 4.0 22.91000000 0.00000000 11.68000000
+AAAAAAAAABPDAAAA TN 0 36.5 135.37500000 0.00000000 30.88000000
+AAAAAAAAACACAAAA TN 0 9.0 72.99000000 0.00000000 69.34000000
+AAAAAAAAACADAAAA TN 0 70.0 103.10000000 0.00000000 50.51000000
+AAAAAAAAACBBAAAA TN 0 43.5 27.20000000 0.00000000 12.31500000
+AAAAAAAAACBCAAAA TN 0 67.0 95.04000000 0.00000000 69.37000000
+AAAAAAAAACBEAAAA TN 0 76.0 141.39000000 0.00000000 1.41000000
+AAAAAAAAACCAAAAA TN 0 70.0 3.28000000 0.00000000 2.39000000
+AAAAAAAAACDAAAAA TN 0 59.5 91.93000000 835.75666667 6.89500000
+AAAAAAAAACDCAAAA TN 0 6.0 78.84500000 0.00000000 42.55500000
+AAAAAAAAACDDAAAA TN 0 58.0 104.71500000 27.41000000 80.37000000
+AAAAAAAAACEBAAAA TN 0 62.0 101.47000000 0.00000000 60.88000000
+AAAAAAAAACECAAAA TN 0 22.0 8.23000000 92.47000000 5.92000000
+AAAAAAAAACFBAAAA TN 0 33.0 182.59000000 0.00000000 98.59000000
+AAAAAAAAACFDAAAA TN 0 84.0 2.82000000 0.00000000 2.05000000
+AAAAAAAAACFEAAAA TN 0 39.0 44.98333333 21.40666667 17.79666667
+AAAAAAAAACGAAAAA TN 0 41.0 106.33000000 0.00000000 79.74000000
+AAAAAAAAACGDAAAA TN 0 69.0 30.36000000 0.00000000 13.96000000
+AAAAAAAAACHBAAAA TN 0 58.333333333333336 111.80000000 677.79000000 55.86333333
+AAAAAAAAACHCAAAA TN 0 79.0 145.37000000 0.00000000 142.46000000
+AAAAAAAAACKBAAAA TN 0 93.0 41.60000000 0.00000000 29.12000000
+AAAAAAAAACKCAAAA TN 0 59.0 74.16000000 0.00000000 38.56000000
+AAAAAAAAACLDAAAA TN 0 58.0 113.75000000 0.00000000 59.15000000
+AAAAAAAAACMDAAAA TN 0 45.0 159.33000000 0.00000000 86.03000000
+AAAAAAAAACNCAAAA TN 0 63.0 42.75000000 0.00000000 31.63000000
+AAAAAAAAACODAAAA TN 0 61.0 52.50500000 32.92000000 44.10000000
+AAAAAAAAACPAAAAA TN 0 78.0 71.90000000 82.53000000 1.43000000
+AAAAAAAAADABAAAA TN 0 57.0 2.11000000 0.00000000 0.92000000
+AAAAAAAAADAEAAAA TN 0 38.0 54.09000000 0.00000000 7.57000000
+AAAAAAAAADBAAAAA TN 0 74.0 66.76000000 0.00000000 12.01000000
+AAAAAAAAADBBAAAA TN 0 78.0 112.13000000 0.00000000 89.70000000
+AAAAAAAAADBDAAAA TN 0 52.0 44.69000000 0.00000000 37.53000000
+AAAAAAAAADBEAAAA TN 0 70.0 21.02500000 434.40500000 7.78000000
+AAAAAAAAADCAAAAA TN 0 31.0 23.03000000 98.39000000 3.45000000
+AAAAAAAAADDEAAAA TN 0 69.0 45.51000000 0.00000000 5.00000000
+AAAAAAAAADEAAAAA TN 0 54.0 169.60000000 0.00000000 118.72000000
+AAAAAAAAADEDAAAA TN 0 14.0 117.64000000 574.12000000 97.64000000
+AAAAAAAAADFAAAAA TN 0 62.5 61.71500000 338.23000000 25.30500000
+AAAAAAAAADFCAAAA TN 0 85.0 6.31000000 0.00000000 5.04000000
+AAAAAAAAADFDAAAA TN 0 94.0 35.27000000 0.00000000 5.64000000
+AAAAAAAAADGCAAAA TN 0 34.0 33.89000000 0.00000000 3.72000000
+AAAAAAAAADGEAAAA TN 0 64.0 27.13000000 0.00000000 3.96500000
+AAAAAAAAADHBAAAA TN 0 29.0 119.83000000 0.00000000 65.90000000
+
+query I
+WITH results AS materialized
+  (SELECT i_item_id,
+          s_state,
+          0 AS g_state,
+          ss_quantity agg1,
+          ss_list_price agg2,
+          ss_coupon_amt agg3,
+          ss_sales_price agg4
+   FROM store_sales,
+        customer_demographics,
+        date_dim,
+        store,
+        item
+   WHERE ss_sold_date_sk = d_date_sk
+     AND ss_item_sk = i_item_sk
+     AND ss_store_sk = s_store_sk
+     AND ss_cdemo_sk = cd_demo_sk
+     AND cd_gender = 'M'
+     AND cd_marital_status = 'S'
+     AND cd_education_status = 'College'
+     AND d_year = 2002
+     AND s_state = 'TN' )
+SELECT i_item_id,
+       s_state,
+       g_state,
+       agg1,
+       agg2,
+       agg3,
+       agg4
+FROM
+  ( SELECT i_item_id,
+           s_state,
+           0 AS g_state,
+           avg(agg1) agg1,
+           avg(agg2) agg2,
+           avg(agg3) agg3,
+           avg(agg4) agg4
+   FROM results
+   GROUP BY i_item_id ,
+            s_state
+   UNION ALL SELECT i_item_id,
+                    NULL AS s_state,
+                    1 AS g_state,
+                    avg(agg1) agg1,
+                    avg(agg2) agg2,
+                    avg(agg3) agg3,
+                    avg(agg4) agg4
+   FROM results
+   GROUP BY i_item_id
+   UNION ALL SELECT NULL AS i_item_id,
+                    NULL AS s_state,
+                    1 AS g_state,
+                    avg(agg1) agg1,
+                    avg(agg2) agg2,
+                    avg(agg3) agg3,
+                    avg(agg4) agg4
+   FROM results ) foo
+ORDER BY i_item_id NULLS FIRST,
+         s_state NULLS FIRST
+LIMIT 100;
+----
+NULL NULL 1 50.73730180059124 75.66938660 208.91378986 38.23022446
+AAAAAAAAAAABAAAA NULL 1 38.0 144.34000000 2034.74000000 101.03000000
+AAAAAAAAAAABAAAA TN 0 38.0 144.34000000 2034.74000000 101.03000000
+AAAAAAAAAAAEAAAA NULL 1 64.0 31.97000000 0.00000000 5.43000000
+AAAAAAAAAAAEAAAA TN 0 64.0 31.97000000 0.00000000 5.43000000
+AAAAAAAAAABAAAAA NULL 1 98.0 72.35000000 0.00000000 2.17000000
+AAAAAAAAAABAAAAA TN 0 98.0 72.35000000 0.00000000 2.17000000
+AAAAAAAAAACAAAAA NULL 1 51.666666666666664 57.20333333 76.22333333 34.14666667
+AAAAAAAAAACAAAAA TN 0 51.666666666666664 57.20333333 76.22333333 34.14666667
+AAAAAAAAAACDAAAA NULL 1 70.5 38.03000000 0.00000000 4.09500000
+AAAAAAAAAACDAAAA TN 0 70.5 38.03000000 0.00000000 4.09500000
+AAAAAAAAAADBAAAA NULL 1 28.0 80.17000000 0.00000000 23.24000000
+AAAAAAAAAADBAAAA TN 0 28.0 80.17000000 0.00000000 23.24000000
+AAAAAAAAAADCAAAA NULL 1 58.0 35.48000000 0.00000000 22.35000000
+AAAAAAAAAADCAAAA TN 0 58.0 35.48000000 0.00000000 22.35000000
+AAAAAAAAAAEBAAAA NULL 1 2.0 130.66000000 0.00000000 7.83000000
+AAAAAAAAAAEBAAAA TN 0 2.0 130.66000000 0.00000000 7.83000000
+AAAAAAAAAAEDAAAA NULL 1 71.5 82.81500000 486.83500000 42.23000000
+AAAAAAAAAAEDAAAA TN 0 71.5 82.81500000 486.83500000 42.23000000
+AAAAAAAAAAEEAAAA NULL 1 66.0 96.22000000 0.00000000 91.40000000
+AAAAAAAAAAEEAAAA TN 0 66.0 96.22000000 0.00000000 91.40000000
+AAAAAAAAAAFCAAAA NULL 1 4.0 140.50000000 0.00000000 56.20000000
+AAAAAAAAAAFCAAAA TN 0 4.0 140.50000000 0.00000000 56.20000000
+AAAAAAAAAAFDAAAA NULL 1 14.0 1.90000000 0.00000000 0.26000000
+AAAAAAAAAAFDAAAA TN 0 14.0 1.90000000 0.00000000 0.26000000
+AAAAAAAAAAGBAAAA NULL 1 37.0 99.46500000 0.00000000 69.06000000
+AAAAAAAAAAGBAAAA TN 0 37.0 99.46500000 0.00000000 69.06000000
+AAAAAAAAAAGCAAAA NULL 1 23.0 69.00000000 1166.44000000 51.75000000
+AAAAAAAAAAGCAAAA TN 0 23.0 69.00000000 1166.44000000 51.75000000
+AAAAAAAAAAGEAAAA NULL 1 49.0 53.58000000 0.00000000 35.33500000
+AAAAAAAAAAGEAAAA TN 0 49.0 53.58000000 0.00000000 35.33500000
+AAAAAAAAAAHAAAAA NULL 1 7.0 83.16000000 0.00000000 40.74000000
+AAAAAAAAAAHAAAAA TN 0 7.0 83.16000000 0.00000000 40.74000000
+AAAAAAAAAAHBAAAA NULL 1 37.0 52.59000000 0.00000000 23.66000000
+AAAAAAAAAAHBAAAA TN 0 37.0 52.59000000 0.00000000 23.66000000
+AAAAAAAAAAHDAAAA NULL 1 21.0 157.98000000 0.00000000 64.77000000
+AAAAAAAAAAHDAAAA TN 0 21.0 157.98000000 0.00000000 64.77000000
+AAAAAAAAAAIAAAAA NULL 1 49.0 2.90000000 0.00000000 0.52000000
+AAAAAAAAAAIAAAAA TN 0 49.0 2.90000000 0.00000000 0.52000000
+AAAAAAAAAAKBAAAA NULL 1 13.0 105.96500000 64.05000000 27.51000000
+AAAAAAAAAAKBAAAA TN 0 13.0 105.96500000 64.05000000 27.51000000
+AAAAAAAAAALAAAAA NULL 1 36.0 139.25000000 2136.90000000 121.14000000
+AAAAAAAAAALAAAAA TN 0 36.0 139.25000000 2136.90000000 121.14000000
+AAAAAAAAAALCAAAA NULL 1 28.0 35.60000000 0.00000000 21.36000000
+AAAAAAAAAALCAAAA TN 0 28.0 35.60000000 0.00000000 21.36000000
+AAAAAAAAAALDAAAA NULL 1 50.0 NULL NULL NULL
+AAAAAAAAAALDAAAA TN 0 50.0 NULL NULL NULL
+AAAAAAAAAANAAAAA NULL 1 44.0 55.85500000 750.17500000 46.48500000
+AAAAAAAAAANAAAAA TN 0 44.0 55.85500000 750.17500000 46.48500000
+AAAAAAAAAANBAAAA NULL 1 40.0 92.23000000 0.00000000 36.89000000
+AAAAAAAAAANBAAAA TN 0 40.0 92.23000000 0.00000000 36.89000000
+AAAAAAAAAAOAAAAA NULL 1 16.0 171.83000000 0.00000000 75.60000000
+AAAAAAAAAAOAAAAA TN 0 16.0 171.83000000 0.00000000 75.60000000
+AAAAAAAAAAOCAAAA NULL 1 17.0 45.48000000 0.00000000 10.91000000
+AAAAAAAAAAOCAAAA TN 0 17.0 45.48000000 0.00000000 10.91000000
+AAAAAAAAAAODAAAA NULL 1 42.0 88.11000000 310.81000000 35.24000000
+AAAAAAAAAAODAAAA TN 0 42.0 88.11000000 310.81000000 35.24000000
+AAAAAAAAAAPBAAAA NULL 1 54.0 112.10000000 0.00000000 22.49000000
+AAAAAAAAAAPBAAAA TN 0 54.0 112.10000000 0.00000000 22.49000000
+AAAAAAAAABAAAAAA NULL 1 70.0 41.97000000 0.00000000 26.02000000
+AAAAAAAAABAAAAAA TN 0 70.0 41.97000000 0.00000000 26.02000000
+AAAAAAAAABABAAAA NULL 1 28.0 70.21000000 0.00000000 30.89000000
+AAAAAAAAABABAAAA TN 0 28.0 70.21000000 0.00000000 30.89000000
+AAAAAAAAABAEAAAA NULL 1 11.0 59.16000000 0.00000000 44.37000000
+AAAAAAAAABAEAAAA TN 0 11.0 59.16000000 0.00000000 44.37000000
+AAAAAAAAABCBAAAA NULL 1 45.5 74.21000000 0.00000000 11.47000000
+AAAAAAAAABCBAAAA TN 0 45.5 74.21000000 0.00000000 11.47000000
+AAAAAAAAABCCAAAA NULL 1 43.0 133.75000000 0.00000000 44.13000000
+AAAAAAAAABCCAAAA TN 0 43.0 133.75000000 0.00000000 44.13000000
+AAAAAAAAABDAAAAA NULL 1 63.0 46.73500000 560.69500000 21.65500000
+AAAAAAAAABDAAAAA TN 0 63.0 46.73500000 560.69500000 21.65500000
+AAAAAAAAABDBAAAA NULL 1 32.0 107.95000000 0.00000000 61.53000000
+AAAAAAAAABDBAAAA TN 0 32.0 107.95000000 0.00000000 61.53000000
+AAAAAAAAABDDAAAA NULL 1 83.0 50.77500000 643.14000000 36.99000000
+AAAAAAAAABDDAAAA TN 0 83.0 50.77500000 643.14000000 36.99000000
+AAAAAAAAABDEAAAA NULL 1 38.0 33.42500000 0.00000000 9.72500000
+AAAAAAAAABDEAAAA TN 0 38.0 33.42500000 0.00000000 9.72500000
+AAAAAAAAABEDAAAA NULL 1 79.0 62.12000000 0.00000000 48.45000000
+AAAAAAAAABEDAAAA TN 0 79.0 62.12000000 0.00000000 48.45000000
+AAAAAAAAABFBAAAA NULL 1 52.0 49.66000000 0.00000000 32.27000000
+AAAAAAAAABFBAAAA TN 0 52.0 49.66000000 0.00000000 32.27000000
+AAAAAAAAABFCAAAA NULL 1 30.0 59.09000000 0.00000000 49.63000000
+AAAAAAAAABFCAAAA TN 0 30.0 59.09000000 0.00000000 49.63000000
+AAAAAAAAABGAAAAA NULL 1 64.0 84.08000000 0.00000000 51.28000000
+AAAAAAAAABGAAAAA TN 0 64.0 84.08000000 0.00000000 51.28000000
+AAAAAAAAABGBAAAA NULL 1 78.0 118.07000000 0.00000000 70.84000000
+AAAAAAAAABGBAAAA TN 0 78.0 118.07000000 0.00000000 70.84000000
+AAAAAAAAABGEAAAA NULL 1 37.5 93.72500000 480.27500000 87.43000000
+AAAAAAAAABGEAAAA TN 0 37.5 93.72500000 480.27500000 87.43000000
+AAAAAAAAABHAAAAA NULL 1 93.0 63.79000000 0.00000000 43.37000000
+AAAAAAAAABHAAAAA TN 0 93.0 63.79000000 0.00000000 43.37000000
+AAAAAAAAABHCAAAA NULL 1 60.5 74.60500000 0.00000000 26.55000000
+AAAAAAAAABHCAAAA TN 0 60.5 74.60500000 0.00000000 26.55000000
+AAAAAAAAABIBAAAA NULL 1 76.0 86.70000000 0.00000000 83.23000000
+AAAAAAAAABIBAAAA TN 0 76.0 86.70000000 0.00000000 83.23000000
+AAAAAAAAABJAAAAA NULL 1 31.5 72.97500000 0.00000000 37.29500000
+AAAAAAAAABJAAAAA TN 0 31.5 72.97500000 0.00000000 37.29500000
+AAAAAAAAABJBAAAA NULL 1 43.0 74.32000000 0.00000000 28.98000000
+AAAAAAAAABJBAAAA TN 0 43.0 74.32000000 0.00000000 28.98000000
+AAAAAAAAABJDAAAA NULL 1 64.0 13.21500000 270.54500000 11.51000000
+
+query I
+WITH ssr AS materialized
+  (SELECT s_store_id,
+          sum(sales_price) AS sales,
+          sum(profit) AS profit,
+          sum(return_amt) AS returns_,
+          sum(net_loss) AS profit_loss
+   FROM
+     (SELECT ss_store_sk AS store_sk,
+             ss_sold_date_sk AS date_sk,
+             ss_ext_sales_price AS sales_price,
+             ss_net_profit AS profit,
+             cast(0 AS decimal(7,2)) AS return_amt,
+             cast(0 AS decimal(7,2)) AS net_loss
+      FROM store_sales
+      UNION ALL SELECT sr_store_sk AS store_sk,
+                       sr_returned_date_sk AS date_sk,
+                       cast(0 AS decimal(7,2)) AS sales_price,
+                       cast(0 AS decimal(7,2)) AS profit,
+                       sr_return_amt AS return_amt,
+                       sr_net_loss AS net_loss
+      FROM store_returns ) salesreturns,
+        date_dim,
+        store
+   WHERE date_sk = d_date_sk
+     AND d_date BETWEEN cast('2000-08-23' AS date) AND cast('2000-09-06' AS date)
+     AND store_sk = s_store_sk
+   GROUP BY s_store_id) ,
+     csr AS materialized
+  (SELECT cp_catalog_page_id,
+          sum(sales_price) AS sales,
+          sum(profit) AS profit,
+          sum(return_amt) AS returns_,
+          sum(net_loss) AS profit_loss
+   FROM
+     (SELECT cs_catalog_page_sk AS page_sk,
+             cs_sold_date_sk AS date_sk,
+             cs_ext_sales_price AS sales_price,
+             cs_net_profit AS profit,
+             cast(0 AS decimal(7,2)) AS return_amt,
+             cast(0 AS decimal(7,2)) AS net_loss
+      FROM catalog_sales
+      UNION ALL SELECT cr_catalog_page_sk AS page_sk,
+                       cr_returned_date_sk AS date_sk,
+                       cast(0 AS decimal(7,2)) AS sales_price,
+                       cast(0 AS decimal(7,2)) AS profit,
+                       cr_return_amount AS return_amt,
+                       cr_net_loss AS net_loss
+      FROM catalog_returns ) salesreturns,
+        date_dim,
+        catalog_page
+   WHERE date_sk = d_date_sk
+     AND d_date BETWEEN cast('2000-08-23' AS date) AND cast('2000-09-06' AS date)
+     AND page_sk = cp_catalog_page_sk
+   GROUP BY cp_catalog_page_id) ,
+     wsr AS materialized
+  (SELECT web_site_id,
+          sum(sales_price) AS sales,
+          sum(profit) AS profit,
+          sum(return_amt) AS returns_,
+          sum(net_loss) AS profit_loss
+   FROM
+     (SELECT ws_web_site_sk AS wsr_web_site_sk,
+             ws_sold_date_sk AS date_sk,
+             ws_ext_sales_price AS sales_price,
+             ws_net_profit AS profit,
+             cast(0 AS decimal(7,2)) AS return_amt,
+             cast(0 AS decimal(7,2)) AS net_loss
+      FROM web_sales
+      UNION ALL SELECT ws_web_site_sk AS wsr_web_site_sk,
+                       wr_returned_date_sk AS date_sk,
+                       cast(0 AS decimal(7,2)) AS sales_price,
+                       cast(0 AS decimal(7,2)) AS profit,
+                       wr_return_amt AS return_amt,
+                       wr_net_loss AS net_loss
+      FROM web_returns
+      LEFT OUTER JOIN web_sales ON (wr_item_sk = ws_item_sk
+                                    AND wr_order_number = ws_order_number) ) salesreturns,
+        date_dim,
+        web_site
+   WHERE date_sk = d_date_sk
+     AND d_date BETWEEN cast('2000-08-23' AS date) AND cast('2000-09-06' AS date)
+     AND wsr_web_site_sk = web_site_sk
+   GROUP BY web_site_id)
+SELECT channel ,
+       id ,
+       sum(sales) AS sales ,
+       sum(returns_) AS returns_ ,
+       sum(profit) AS profit
+FROM
+  (SELECT 'store channel' AS channel ,
+          concat('store', s_store_id) AS id ,
+          sales ,
+          returns_ ,
+          (profit - profit_loss) AS profit
+   FROM ssr
+   UNION ALL SELECT 'catalog channel' AS channel ,
+                    concat('catalog_page', cp_catalog_page_id) AS id ,
+                    sales ,
+                    returns_ ,
+                    (profit - profit_loss) AS profit
+   FROM csr
+   UNION ALL SELECT 'web channel' AS channel ,
+                    concat('web_site', web_site_id) AS id ,
+                    sales ,
+                    returns_ ,
+                    (profit - profit_loss) AS profit
+   FROM wsr ) x
+GROUP BY ROLLUP (channel,
+                 id)
+ORDER BY channel NULLS FIRST,
+         id NULLS FIRST
+LIMIT 100;
+----
+NULL NULL 112458734.70 3255243.12 -31584085.44
+catalog channel NULL 38544639.28 1083573.98 -4396139.07
+catalog channel catalog_pageAAAAAAAAAAABAAAA 163753.93 4645.17 -36282.28
+catalog channel catalog_pageAAAAAAAAAABBAAAA 0.00 326.05 -191.31
+catalog channel catalog_pageAAAAAAAAABABAAAA 87201.46 0.00 838.90
+catalog channel catalog_pageAAAAAAAAABIAAAAA 0.00 564.80 -417.26
+catalog channel catalog_pageAAAAAAAAACABAAAA 66295.66 410.56 -8354.81
+catalog channel catalog_pageAAAAAAAAACJAAAAA 0.00 458.80 -1255.28
+catalog channel catalog_pageAAAAAAAAADABAAAA 80733.59 0.00 -28308.77
+catalog channel catalog_pageAAAAAAAAADCBAAAA 74461.52 0.00 -13496.66
+catalog channel catalog_pageAAAAAAAAAEABAAAA 72573.19 31.10 -11507.69
+catalog channel catalog_pageAAAAAAAAAEBBAAAA 0.00 732.24 -317.65
+catalog channel catalog_pageAAAAAAAAAECBAAAA 104457.44 0.00 -6611.61
+catalog channel catalog_pageAAAAAAAAAEPAAAAA 0.00 1415.67 -1158.73
+catalog channel catalog_pageAAAAAAAAAFABAAAA 65420.53 0.00 -20106.28
+catalog channel catalog_pageAAAAAAAAAFCBAAAA 105300.34 0.00 -8194.81
+catalog channel catalog_pageAAAAAAAAAFPAAAAA 0.00 127.09 -231.51
+catalog channel catalog_pageAAAAAAAAAGABAAAA 70575.69 3187.01 -12630.36
+catalog channel catalog_pageAAAAAAAAAGCBAAAA 86687.48 0.00 -780.19
+catalog channel catalog_pageAAAAAAAAAGIAAAAA 0.00 17.07 -105.35
+catalog channel catalog_pageAAAAAAAAAGPAAAAA 0.00 722.42 -3009.18
+catalog channel catalog_pageAAAAAAAAAHABAAAA 87201.78 0.00 -10260.58
+catalog channel catalog_pageAAAAAAAAAHCBAAAA 31174.07 0.00 -27306.81
+catalog channel catalog_pageAAAAAAAAAHPAAAAA 0.00 3922.70 -6561.73
+catalog channel catalog_pageAAAAAAAAAIABAAAA 0.00 25.55 -16.12
+catalog channel catalog_pageAAAAAAAAAICBAAAA 67523.56 0.00 -26215.54
+catalog channel catalog_pageAAAAAAAAAIPAAAAA 0.00 738.06 -892.10
+catalog channel catalog_pageAAAAAAAAAJABAAAA 0.00 281.75 -231.32
+catalog channel catalog_pageAAAAAAAAAJBBAAAA 0.00 3841.47 -2645.45
+catalog channel catalog_pageAAAAAAAAAJCBAAAA 64422.47 0.00 -21760.27
+catalog channel catalog_pageAAAAAAAAAJPAAAAA 0.00 776.21 -987.92
+catalog channel catalog_pageAAAAAAAAAKCBAAAA 8385.31 0.00 1119.71
+catalog channel catalog_pageAAAAAAAAAKPAAAAA 186409.44 1955.06 -17834.13
+catalog channel catalog_pageAAAAAAAAALCBAAAA 5307.21 0.00 -1410.66
+catalog channel catalog_pageAAAAAAAAALPAAAAA 127062.30 821.68 -9635.43
+catalog channel catalog_pageAAAAAAAAAMCBAAAA 7584.75 0.00 60.97
+catalog channel catalog_pageAAAAAAAAAMPAAAAA 165051.22 1660.34 2161.21
+catalog channel catalog_pageAAAAAAAAANBBAAAA 0.00 2770.26 -4806.67
+catalog channel catalog_pageAAAAAAAAANCBAAAA 3247.50 0.00 -999.98
+catalog channel catalog_pageAAAAAAAAANPAAAAA 151287.41 2497.94 -21987.54
+catalog channel catalog_pageAAAAAAAAAOABAAAA 0.00 233.40 -317.74
+catalog channel catalog_pageAAAAAAAAAOCBAAAA 6384.00 0.00 1780.68
+catalog channel catalog_pageAAAAAAAAAOPAAAAA 185559.84 82.29 10072.16
+catalog channel catalog_pageAAAAAAAAAPABAAAA 0.00 1018.02 -147.66
+catalog channel catalog_pageAAAAAAAAAPCBAAAA 7497.63 0.00 -3560.97
+catalog channel catalog_pageAAAAAAAAAPPAAAAA 192066.74 4317.48 -10580.22
+catalog channel catalog_pageAAAAAAAABAABAAAA 245522.46 0.00 -6595.62
+catalog channel catalog_pageAAAAAAAABABBAAAA 0.00 339.24 -357.33
+catalog channel catalog_pageAAAAAAAABAJAAAAA 0.00 3999.96 -892.25
+catalog channel catalog_pageAAAAAAAABBABAAAA 105735.80 0.00 -655.91
+catalog channel catalog_pageAAAAAAAABCABAAAA 63001.17 0.00 -22416.40
+catalog channel catalog_pageAAAAAAAABDABAAAA 95335.65 851.80 -15517.95
+catalog channel catalog_pageAAAAAAAABDBBAAAA 0.00 3064.75 -1892.02
+catalog channel catalog_pageAAAAAAAABDCBAAAA 67382.28 563.40 -13054.21
+catalog channel catalog_pageAAAAAAAABDJAAAAA 0.00 2136.45 -1010.60
+catalog channel catalog_pageAAAAAAAABDPAAAAA 0.00 379.16 -516.48
+catalog channel catalog_pageAAAAAAAABEABAAAA 68341.49 0.00 -16387.25
+catalog channel catalog_pageAAAAAAAABECBAAAA 59060.46 0.00 -11710.40
+catalog channel catalog_pageAAAAAAAABEPAAAAA 0.00 10339.55 -5613.65
+catalog channel catalog_pageAAAAAAAABFABAAAA 92343.51 0.00 -22989.96
+catalog channel catalog_pageAAAAAAAABFCBAAAA 85194.32 0.00 -13576.93
+catalog channel catalog_pageAAAAAAAABFIAAAAA 0.00 8697.10 -2081.71
+catalog channel catalog_pageAAAAAAAABFPAAAAA 0.00 6740.27 -5916.94
+catalog channel catalog_pageAAAAAAAABGABAAAA 82462.85 33.99 -18702.30
+catalog channel catalog_pageAAAAAAAABGCBAAAA 85875.93 0.00 -9051.98
+catalog channel catalog_pageAAAAAAAABGPAAAAA 0.00 8381.15 -6711.51
+catalog channel catalog_pageAAAAAAAABHABAAAA 124171.02 54.18 -197.57
+catalog channel catalog_pageAAAAAAAABHCBAAAA 68036.22 0.00 -14007.52
+catalog channel catalog_pageAAAAAAAABHPAAAAA 0.00 7365.89 -5178.27
+catalog channel catalog_pageAAAAAAAABICBAAAA 94990.21 0.00 4425.06
+catalog channel catalog_pageAAAAAAAABIPAAAAA 0.00 1564.60 -1447.13
+catalog channel catalog_pageAAAAAAAABJABAAAA 0.00 979.44 -1802.33
+catalog channel catalog_pageAAAAAAAABJCBAAAA 6231.12 0.00 1678.96
+catalog channel catalog_pageAAAAAAAABJPAAAAA 0.00 2436.63 -970.25
+catalog channel catalog_pageAAAAAAAABKCBAAAA 133.20 0.00 -1430.43
+catalog channel catalog_pageAAAAAAAABKPAAAAA 206609.66 473.75 -19692.70
+catalog channel catalog_pageAAAAAAAABLBBAAAA 0.00 4842.72 -785.83
+catalog channel catalog_pageAAAAAAAABLPAAAAA 169282.06 76.70 8430.92
+catalog channel catalog_pageAAAAAAAABMABAAAA 0.00 1234.35 -398.38
+catalog channel catalog_pageAAAAAAAABMCBAAAA 6706.57 0.00 -2348.17
+catalog channel catalog_pageAAAAAAAABMPAAAAA 168435.88 21.75 -37718.67
+catalog channel catalog_pageAAAAAAAABNCBAAAA 6532.76 0.00 -6949.13
+catalog channel catalog_pageAAAAAAAABNPAAAAA 153941.95 1472.80 -21070.32
+catalog channel catalog_pageAAAAAAAABOCBAAAA 1926.58 0.00 -2167.00
+catalog channel catalog_pageAAAAAAAABOPAAAAA 107801.17 0.00 -57851.69
+catalog channel catalog_pageAAAAAAAABPABAAAA 0.00 85.32 -80.67
+catalog channel catalog_pageAAAAAAAABPCBAAAA 3860.83 0.00 1081.78
+catalog channel catalog_pageAAAAAAAABPPAAAAA 194664.82 2402.38 -1062.59
+catalog channel catalog_pageAAAAAAAACAABAAAA 189820.60 5.96 1292.88
+catalog channel catalog_pageAAAAAAAACBABAAAA 118568.50 122.88 -3355.82
+catalog channel catalog_pageAAAAAAAACBBBAAAA 0.00 2219.07 -1573.11
+catalog channel catalog_pageAAAAAAAACBCBAAAA 0.00 2280.50 -331.26
+catalog channel catalog_pageAAAAAAAACBIAAAAA 0.00 0.00 -530.26
+catalog channel catalog_pageAAAAAAAACCABAAAA 137571.44 0.00 -16709.85
+catalog channel catalog_pageAAAAAAAACCCBAAAA 0.00 124.20 -313.56
+catalog channel catalog_pageAAAAAAAACCIAAAAA 0.00 70.29 -40.64
+catalog channel catalog_pageAAAAAAAACDABAAAA 54405.14 623.01 -32042.98
+catalog channel catalog_pageAAAAAAAACDCBAAAA 71871.07 0.00 -11581.87
+catalog channel catalog_pageAAAAAAAACDIAAAAA 0.00 416.10 -231.91
+catalog channel catalog_pageAAAAAAAACDPAAAAA 0.00 1279.25 -3731.50
+
+query I
+WITH year_total AS materialized
+  (SELECT c_customer_id customer_id,
+          c_first_name customer_first_name,
+          c_last_name customer_last_name,
+          c_preferred_cust_flag customer_preferred_cust_flag,
+          c_birth_country customer_birth_country,
+          c_login customer_login,
+          c_email_address customer_email_address,
+          d_year dyear,
+          sum(ss_ext_list_price-ss_ext_discount_amt) year_total,
+          's' sale_type
+   FROM customer,
+        store_sales,
+        date_dim
+   WHERE c_customer_sk = ss_customer_sk
+     AND ss_sold_date_sk = d_date_sk
+   GROUP BY c_customer_id,
+            c_first_name,
+            c_last_name,
+            c_preferred_cust_flag,
+            c_birth_country,
+            c_login,
+            c_email_address,
+            d_year
+   UNION ALL SELECT c_customer_id customer_id,
+                    c_first_name customer_first_name,
+                    c_last_name customer_last_name,
+                    c_preferred_cust_flag customer_preferred_cust_flag,
+                    c_birth_country customer_birth_country,
+                    c_login customer_login,
+                    c_email_address customer_email_address,
+                    d_year dyear,
+                    sum(ws_ext_list_price-ws_ext_discount_amt) year_total,
+                    'w' sale_type
+   FROM customer,
+        web_sales,
+        date_dim
+   WHERE c_customer_sk = ws_bill_customer_sk
+     AND ws_sold_date_sk = d_date_sk
+   GROUP BY c_customer_id,
+            c_first_name,
+            c_last_name,
+            c_preferred_cust_flag,
+            c_birth_country,
+            c_login,
+            c_email_address,
+            d_year)
+SELECT t_s_secyear.customer_id,
+       t_s_secyear.customer_first_name,
+       t_s_secyear.customer_last_name,
+       t_s_secyear.customer_preferred_cust_flag
+FROM year_total t_s_firstyear,
+     year_total t_s_secyear,
+     year_total t_w_firstyear,
+     year_total t_w_secyear
+WHERE t_s_secyear.customer_id = t_s_firstyear.customer_id
+  AND t_s_firstyear.customer_id = t_w_secyear.customer_id
+  AND t_s_firstyear.customer_id = t_w_firstyear.customer_id
+  AND t_s_firstyear.sale_type = 's'
+  AND t_w_firstyear.sale_type = 'w'
+  AND t_s_secyear.sale_type = 's'
+  AND t_w_secyear.sale_type = 'w'
+  AND t_s_firstyear.dyear = 2001
+  AND t_s_secyear.dyear = 2001+1
+  AND t_w_firstyear.dyear = 2001
+  AND t_w_secyear.dyear = 2001+1
+  AND t_s_firstyear.year_total > 0
+  AND t_w_firstyear.year_total > 0
+  AND CASE
+          WHEN t_w_firstyear.year_total > 0 THEN (t_w_secyear.year_total*1.0000) / t_w_firstyear.year_total
+          ELSE 0.0
+      END > CASE
+                WHEN t_s_firstyear.year_total > 0 THEN (t_s_secyear.year_total*1.0000) / t_s_firstyear.year_total
+                ELSE 0.0
+            END
+ORDER BY t_s_secyear.customer_id NULLS FIRST,
+         t_s_secyear.customer_first_name NULLS FIRST,
+         t_s_secyear.customer_last_name NULLS FIRST,
+         t_s_secyear.customer_preferred_cust_flag NULLS FIRST
+LIMIT 100;
+----
+AAAAAAAAAMGDAAAA Kenneth Harlan Y
+AAAAAAAAAOPFBAAA Jerry Fields N
+AAAAAAAABIJBAAAA James White Y
+AAAAAAAABKOPAAAA Gary NULL Y
+AAAAAAAABNBBAAAA Irma Smith Y
+AAAAAAAACADPAAAA Cristobal Thomas N
+AAAAAAAACCDEAAAA Samantha Paul N
+AAAAAAAACFCGBAAA Marcus Sanders N
+AAAAAAAACFEEAAAA Linda Hollis Y
+AAAAAAAACFENAAAA Christopher Dawson NULL
+AAAAAAAACHLMAAAA Jenny Dukes Y
+AAAAAAAACIJMAAAA Elizabeth Thomas Y
+AAAAAAAACJBLAAAA Janie Guzman N
+AAAAAAAACJDIAAAA James Kerr Y
+AAAAAAAACKAJAAAA Rose Olsen Y
+AAAAAAAACNAGBAAA Virginia May N
+AAAAAAAADAEDAAAA Bernice Pearson Y
+AAAAAAAADBEFBAAA Bennie Bowers Y
+AAAAAAAADCKOAAAA Robert Gonzalez N
+AAAAAAAADFIEBAAA John Gray Y
+AAAAAAAADFKABAAA Latoya Craft N
+AAAAAAAADHOCAAAA Lisa East Y
+AAAAAAAADIIOAAAA David Carroll N
+AAAAAAAADIJGBAAA Ruth Sanders Y
+AAAAAAAAEADJAAAA Ruth Carroll N
+AAAAAAAAEDIABAAA Robert Wall N
+AAAAAAAAEJDLAAAA Alice Wright Y
+AAAAAAAAEKFPAAAA Annika Chin Y
+AAAAAAAAEKJLAAAA Aisha Carlson N
+AAAAAAAAEOAKAAAA Molly Benjamin N
+AAAAAAAAFBAHAAAA Michael Williams N
+AAAAAAAAFGIGAAAA Eduardo Miller Y
+AAAAAAAAFHACBAAA NULL NULL NULL
+AAAAAAAAFJHFAAAA Larissa Roy N
+AAAAAAAAFMGHAAAA Patsy Holmes N
+AAAAAAAAFMHIAAAA Emilio Darling N
+AAAAAAAAFOGIAAAA Michelle Greene Y
+AAAAAAAAFOJAAAAA Don Castillo N
+AAAAAAAAGAACAAAA David Haskins Y
+AAAAAAAAGFMDBAAA Kathleen Gibson N
+AAAAAAAAHAKJAAAA Lawrence Matteson N
+AAAAAAAAHGOABAAA Sonia White N
+AAAAAAAAHHCABAAA William Stewart Y
+AAAAAAAAHMJNAAAA Ryan Baptiste Y
+AAAAAAAAHNFHAAAA Rebecca Wilson Y
+AAAAAAAAIADEBAAA Diane Aldridge Y
+AAAAAAAAIBAEBAAA Sandra Wilson N
+AAAAAAAAIBFCBAAA Ruth Grantham Y
+AAAAAAAAIBHHAAAA Jennifer Ballard Y
+AAAAAAAAICHFAAAA Linda Mccoy Y
+AAAAAAAAIDKFAAAA Michael Mack N
+AAAAAAAAIJCIBAAA Thomas Oneal N
+AAAAAAAAIJEMAAAA Charlie Cummings N
+AAAAAAAAIMHBAAAA Kathy Knowles Y
+AAAAAAAAJAIMAAAA Geraldine German Y
+AAAAAAAAJDBLAAAA Melvin Taylor Y
+AAAAAAAAJGMMAAAA Richard Larson N
+AAAAAAAAJIALAAAA Santos Gutierrez Y
+AAAAAAAAJKBNAAAA Julie Kern Y
+AAAAAAAAJMHLAAAA Wanda Ryan Y
+AAAAAAAAJNALAAAA Kathy Vazquez Y
+AAAAAAAAJPINAAAA Rose Waite N
+AAAAAAAAKAECAAAA Milton Mackey N
+AAAAAAAAKBCABAAA Debra Bell N
+AAAAAAAAKJBKAAAA Georgia Scott N
+AAAAAAAAKJBLAAAA Kerry Davis Y
+AAAAAAAAKLHHBAAA Manuel Castaneda Y
+AAAAAAAALFKKAAAA Ignacio Miller Y
+AAAAAAAALHMCAAAA Brooke Nelson N
+AAAAAAAALINNAAAA NULL Buckley N
+AAAAAAAALIOPAAAA Derek Allen N
+AAAAAAAALOCIBAAA Elaine Walden Y
+AAAAAAAAMFPFBAAA Jamie Woods Y
+AAAAAAAAMMOBBAAA Margaret Smith N
+AAAAAAAAMPDGBAAA Theodore Hiller Y
+AAAAAAAANGDBBAAA Carlos Jewell Y
+AAAAAAAANJAMAAAA Thaddeus Griffin N
+AAAAAAAANJHCBAAA Christopher Schreiber Y
+AAAAAAAANJOLAAAA Debra Underwood Y
+AAAAAAAAOBADBAAA Elizabeth Burnham N
+AAAAAAAAOBLPAAAA Willie Mckeown Y
+AAAAAAAAOCAJAAAA Jenna Staton Y
+AAAAAAAAOFLCAAAA James Taylor N
+AAAAAAAAOPDLAAAA Ann Pence N
+AAAAAAAAPDFBAAAA Terrance Banks Y
+AAAAAAAAPEPCBAAA Amanda Tillman Y
+AAAAAAAAPJENAAAA Ashley Norton Y
+AAAAAAAAPJOIAAAA Beverly Hart Y
+AAAAAAAAPKBCBAAA Andrea White N
+AAAAAAAAPKIKAAAA Wendy Horvath N
+
+query I
+WITH frequent_ss_items AS materialized
+  (SELECT itemdesc,
+          i_item_sk item_sk,
+          d_date solddate,
+          count(*) cnt
+   FROM store_sales,
+        date_dim,
+     (SELECT SUBSTRING(i_item_desc, 1, 30) itemdesc,
+             *
+      FROM item) sq1
+   WHERE ss_sold_date_sk = d_date_sk
+     AND ss_item_sk = i_item_sk
+     AND d_year IN (2000,
+                    2000+1,
+                    2000+2,
+                    2000+3)
+   GROUP BY itemdesc,
+            i_item_sk,
+            d_date
+   HAVING count(*) >4),
+     max_store_sales AS materialized
+  (SELECT max(csales) tpcds_cmax
+   FROM
+     (SELECT c_customer_sk,
+             sum(ss_quantity*ss_sales_price) csales
+      FROM store_sales,
+           customer,
+           date_dim
+      WHERE ss_customer_sk = c_customer_sk
+        AND ss_sold_date_sk = d_date_sk
+        AND d_year IN (2000,
+                       2000+1,
+                       2000+2,
+                       2000+3)
+      GROUP BY c_customer_sk) sq2),
+     best_ss_customer AS
+  (SELECT c_customer_sk,
+          sum(ss_quantity*ss_sales_price) ssales
+   FROM store_sales,
+        customer,
+        max_store_sales
+   WHERE ss_customer_sk = c_customer_sk
+   GROUP BY c_customer_sk
+   HAVING sum(ss_quantity*ss_sales_price) > (50/100.0) * max(tpcds_cmax))
+SELECT c_last_name,
+       c_first_name,
+       sales
+FROM
+  (SELECT c_last_name,
+          c_first_name,
+          sum(cs_quantity*cs_list_price) sales
+   FROM catalog_sales,
+        customer,
+        date_dim,
+        frequent_ss_items,
+        best_ss_customer
+   WHERE d_year = 2000
+     AND d_moy = 2
+     AND cs_sold_date_sk = d_date_sk
+     AND cs_item_sk = item_sk
+     AND cs_bill_customer_sk = best_ss_customer.c_customer_sk
+     AND cs_bill_customer_sk = customer.c_customer_sk
+   GROUP BY c_last_name,
+            c_first_name
+   UNION ALL SELECT c_last_name,
+                    c_first_name,
+                    sum(ws_quantity*ws_list_price) sales
+   FROM web_sales,
+        customer,
+        date_dim,
+        frequent_ss_items,
+        best_ss_customer
+   WHERE d_year = 2000
+     AND d_moy = 2
+     AND ws_sold_date_sk = d_date_sk
+     AND ws_item_sk = item_sk
+     AND ws_bill_customer_sk = best_ss_customer.c_customer_sk
+     AND ws_bill_customer_sk = customer.c_customer_sk
+   GROUP BY c_last_name,
+            c_first_name) sq3
+ORDER BY c_last_name NULLS FIRST,
+         c_first_name NULLS FIRST,
+         sales NULLS FIRST
+LIMIT 100;
+----
+Collins Gordon 2025.60
+Fowler Steven 4069.50
+Green Jesse 902.96
+Moore Chester 8764.38
+
+query I
+WITH ssales AS materialized
+  (SELECT c_last_name,
+          c_first_name,
+          s_store_name,
+          ca_state,
+          s_state,
+          i_color,
+          i_current_price,
+          i_manager_id,
+          i_units,
+          i_size,
+          sum(ss_net_paid) netpaid
+   FROM store_sales,
+        store_returns,
+        store,
+        item,
+        customer,
+        customer_address
+   WHERE ss_ticket_number = sr_ticket_number
+     AND ss_item_sk = sr_item_sk
+     AND ss_customer_sk = c_customer_sk
+     AND ss_item_sk = i_item_sk
+     AND ss_store_sk = s_store_sk
+     AND c_current_addr_sk = ca_address_sk
+     AND c_birth_country <> upper(ca_country)
+     AND s_zip = ca_zip
+     AND s_market_id=8
+   GROUP BY c_last_name,
+            c_first_name,
+            s_store_name,
+            ca_state,
+            s_state,
+            i_color,
+            i_current_price,
+            i_manager_id,
+            i_units,
+            i_size)
+SELECT c_last_name,
+       c_first_name,
+       s_store_name,
+       sum(netpaid) paid
+FROM ssales
+WHERE i_color = 'peach'
+GROUP BY c_last_name,
+         c_first_name,
+         s_store_name
+HAVING sum(netpaid) >
+  (SELECT 0.05*avg(netpaid)
+   FROM ssales)
+ORDER BY c_last_name,
+         c_first_name,
+         s_store_name ;
+----
+Green Barry bar 890.96
+
+query I
+WITH ss AS materialized
+  (SELECT ca_county,
+          d_qoy,
+          d_year,
+          sum(ss_ext_sales_price) AS store_sales
+   FROM store_sales,
+        date_dim,
+        customer_address
+   WHERE ss_sold_date_sk = d_date_sk
+     AND ss_addr_sk=ca_address_sk
+   GROUP BY ca_county,
+            d_qoy,
+            d_year),
+     ws AS materialized
+  (SELECT ca_county,
+          d_qoy,
+          d_year,
+          sum(ws_ext_sales_price) AS web_sales
+   FROM web_sales,
+        date_dim,
+        customer_address
+   WHERE ws_sold_date_sk = d_date_sk
+     AND ws_bill_addr_sk=ca_address_sk
+   GROUP BY ca_county,
+            d_qoy,
+            d_year)
+SELECT ss1.ca_county ,
+       ss1.d_year ,
+       (ws2.web_sales*1.0000)/ws1.web_sales web_q1_q2_increase ,
+       (ss2.store_sales*1.0000)/ss1.store_sales store_q1_q2_increase ,
+       (ws3.web_sales*1.0000)/ws2.web_sales web_q2_q3_increase ,
+       (ss3.store_sales*1.0000)/ss2.store_sales store_q2_q3_increase
+FROM ss ss1 ,
+     ss ss2 ,
+     ss ss3 ,
+     ws ws1 ,
+     ws ws2 ,
+     ws ws3
+WHERE ss1.d_qoy = 1
+  AND ss1.d_year = 2000
+  AND ss1.ca_county = ss2.ca_county
+  AND ss2.d_qoy = 2
+  AND ss2.d_year = 2000
+  AND ss2.ca_county = ss3.ca_county
+  AND ss3.d_qoy = 3
+  AND ss3.d_year = 2000
+  AND ss1.ca_county = ws1.ca_county
+  AND ws1.d_qoy = 1
+  AND ws1.d_year = 2000
+  AND ws1.ca_county = ws2.ca_county
+  AND ws2.d_qoy = 2
+  AND ws2.d_year = 2000
+  AND ws1.ca_county = ws3.ca_county
+  AND ws3.d_qoy = 3
+  AND ws3.d_year = 2000
+  AND CASE
+          WHEN ws1.web_sales > 0 THEN (ws2.web_sales*1.0000)/ws1.web_sales
+          ELSE NULL
+      END > CASE
+                WHEN ss1.store_sales > 0 THEN (ss2.store_sales*1.0000)/ss1.store_sales
+                ELSE NULL
+            END
+  AND CASE
+          WHEN ws2.web_sales > 0 THEN (ws3.web_sales*1.0000)/ws2.web_sales
+          ELSE NULL
+      END > CASE
+                WHEN ss2.store_sales > 0 THEN (ss3.store_sales*1.0000)/ss2.store_sales
+                ELSE NULL
+            END
+ORDER BY ss1.ca_county;
+----
+Atchison County 2000 0.979594880351 0.338811193071 7.440304982579 1.788463248444
+Bacon County 2000 1.090672331028 0.153186918701 1.196619858502 0.834086089760
+Berkshire County 2000 1.841093693587 1.222157174514 1.564153607521 1.246635189748
+Blue Earth County 2000 8.913248334932 0.541756488843 0.391444310731 0.385909018261
+Bourbon County 2000 1.940226154546 0.778069477528 1.560924894583 1.227445311282
+Boyd County 2000 1.219972731193 1.084267413667 1.270903743659 1.204192439711
+Bradley County 2000 2.713177401713 0.961175914393 1.376919502997 0.694176616318
+Buchanan County 2000 0.828926823470 0.710318098807 6.950155195705 2.054632092711
+Cass County 2000 1.694130226833 1.147234898729 2.702644199811 1.265409237688
+Cook County 2000 1.787724675662 0.847709176070 2.200098777775 1.574454650424
+Corson County 2000 1.709337823637 0.247126981907 1.693672700477 1.580396851037
+Edmonson County 2000 0.671752166907 0.493260341425 2.575951260814 0.982562582027
+Ferry County 2000 1.824821667754 0.323131839418 1.924438339394 1.210086119077
+Fillmore County 2000 0.789730605754 0.258588958470 1.665477086145 1.149218460791
+Fremont County 2000 3.219034577385 0.494786007104 1.853122998879 1.549095175905
+Gaston County 2000 1.194604428230 0.336071059515 4.564338454766 1.559277145455
+Gates County 2000 0.912221036004 0.261797664417 2.889296085365 2.255780293607
+Green County 2000 0.774878284028 0.330823316063 5.185149904347 3.912295355900
+Greene County 2000 0.888125202118 0.830953728665 2.049974934640 1.987579693671
+Harris County 2000 0.897005949747 0.239650470708 3.739830432076 1.628898369869
+Heard County 2000 3.370087800534 1.862446189197 1.637083197814 0.586831233057
+Houston County 2000 1.390104528446 1.106577817403 1.990538572629 1.530412891569
+Lake County 2000 1.283037854153 0.882009087231 1.365982160091 1.223152169403
+Lamar County 2000 0.848381448771 0.775988920090 4.520095150484 2.186866923631
+Marion County 2000 1.069030045535 0.826253722136 2.758457444613 1.879714855949
+Mitchell County 2000 3.530864575166 1.090343469887 2.042721502394 1.437166731240
+Mora County 2000 2.108264798031 0.429651371315 1.442197048856 0.891789716702
+Nicholas County 2000 2.321985048861 2.051937769296 3.805137425709 1.203177531936
+Oceana County 2000 1.082441246459 0.845879168827 1.166759514534 0.935630052988
+Pocahontas County 2000 0.924835518394 0.705667721300 1.897392930177 1.062891013305
+Pottawatomie County 2000 0.436886904612 0.364719811780 3.291989743486 2.778401665813
+Refugio County 2000 0.724023551322 0.544866710222 2.715205714413 1.385720862614
+Santa Cruz County 2000 1.152417063660 1.117822727552 2.831705135708 1.989474306680
+Smith County 2000 1.049390133084 0.496404899762 3.900881322641 3.711118404247
+Stanton County 2000 2.394973571214 0.954097193445 0.979666945205 0.894249837843
+Stark County 2000 2.801957795293 1.340377271083 2.303575028474 0.777974888804
+Stone County 2000 0.947343662414 0.840278095845 5.935235220706 1.237367223906
+Tooele County 2000 2.026778819822 0.541613493347 1.174794759837 0.695829575297
+Vernon County 2000 2.262711522239 1.626728336689 1.770786780730 1.237619558339
+Wabash County 2000 1.111361457159 0.686835526896 2.180161169759 1.612175695100
+Wayne County 2000 2.638013723962 0.675140898418 2.941538537266 2.414871392819
+Webster County 2000 0.604005183435 0.588561538633 3.008916135411 1.730187577260
+Wheeler County 2000 1.610547603234 0.605963509542 0.817801307950 0.788889792566
+Williamson County 2000 1.614744536845 0.443873134688 4.080301148443 3.342687494478
+
+query I
+WITH ss AS materialized
+  ( SELECT i_manufact_id,
+           sum(ss_ext_sales_price) total_sales
+   FROM store_sales,
+        date_dim,
+        customer_address,
+        item
+   WHERE i_manufact_id IN
+       (SELECT i_manufact_id
+        FROM item
+        WHERE i_category IN ('Electronics'))
+     AND ss_item_sk = i_item_sk
+     AND ss_sold_date_sk = d_date_sk
+     AND d_year = 1998
+     AND d_moy = 5
+     AND ss_addr_sk = ca_address_sk
+     AND ca_gmt_offset = -5
+   GROUP BY i_manufact_id),
+     cs AS materialized
+  ( SELECT i_manufact_id,
+           sum(cs_ext_sales_price) total_sales
+   FROM catalog_sales,
+        date_dim,
+        customer_address,
+        item
+   WHERE i_manufact_id IN
+       (SELECT i_manufact_id
+        FROM item
+        WHERE i_category IN ('Electronics'))
+     AND cs_item_sk = i_item_sk
+     AND cs_sold_date_sk = d_date_sk
+     AND d_year = 1998
+     AND d_moy = 5
+     AND cs_bill_addr_sk = ca_address_sk
+     AND ca_gmt_offset = -5
+   GROUP BY i_manufact_id),
+     ws AS materialized
+  ( SELECT i_manufact_id,
+           sum(ws_ext_sales_price) total_sales
+   FROM web_sales,
+        date_dim,
+        customer_address,
+        item
+   WHERE i_manufact_id IN
+       (SELECT i_manufact_id
+        FROM item
+        WHERE i_category IN ('Electronics'))
+     AND ws_item_sk = i_item_sk
+     AND ws_sold_date_sk = d_date_sk
+     AND d_year = 1998
+     AND d_moy = 5
+     AND ws_bill_addr_sk = ca_address_sk
+     AND ca_gmt_offset = -5
+   GROUP BY i_manufact_id)
+SELECT i_manufact_id,
+       sum(total_sales) total_sales
+FROM
+  (SELECT *
+   FROM ss
+   UNION ALL SELECT *
+   FROM cs
+   UNION ALL SELECT *
+   FROM ws) tmp1
+GROUP BY i_manufact_id
+ORDER BY total_sales
+LIMIT 100;
+----
+929 47.03
+821 298.16
+738 355.78
+741 558.50
+697 607.87
+824 636.01
+938 804.30
+710 861.38
+785 977.68
+936 1254.44
+849 1265.74
+784 1472.78
+990 1635.12
+880 1770.51
+965 2550.56
+946 2560.84
+783 2588.40
+464 2820.49
+789 3061.58
+705 3233.11
+733 3587.59
+709 3593.01
+928 3611.76
+682 3886.96
+482 3949.49
+812 3956.44
+704 4137.47
+698 4197.54
+840 4222.19
+794 4237.77
+838 4293.86
+853 4555.12
+711 4765.75
+668 4983.54
+780 5247.14
+799 5984.12
+899 6013.24
+798 6055.88
+774 6121.74
+795 6379.88
+713 6696.51
+947 6848.14
+386 7008.50
+811 7459.85
+872 7620.85
+898 7720.89
+920 7863.79
+556 8440.53
+1000 8756.30
+939 8794.90
+981 8861.58
+851 8889.27
+832 9582.71
+655 9666.02
+723 9667.53
+887 9698.00
+590 9700.72
+974 9739.11
+963 10014.23
+740 10060.25
+358 10101.34
+969 10138.23
+555 10260.50
+484 10301.91
+977 10475.47
+766 10534.33
+855 10626.45
+472 10647.86
+797 10772.56
+363 10876.09
+910 10998.62
+619 11012.10
+828 11099.19
+419 11099.40
+806 11113.64
+166 11230.73
+807 11275.00
+770 11282.09
+376 11433.19
+966 11517.48
+430 11761.86
+607 11817.18
+772 11868.89
+692 11953.52
+708 12030.48
+995 12083.59
+764 12163.19
+581 12223.47
+519 12470.81
+860 12525.53
+810 12588.58
+396 12744.22
+841 12764.76
+564 13186.25
+652 13193.69
+886 13322.77
+826 13393.73
+968 13445.58
+422 13634.68
+986 13680.84
+
+query I
+WITH results AS materialized
+  (SELECT sum(ss_net_profit) AS ss_net_profit,
+          sum(ss_ext_sales_price) AS ss_ext_sales_price,
+          (sum(ss_net_profit)*1.0000)/sum(ss_ext_sales_price) AS gross_margin ,
+          i_category ,
+          i_class ,
+          0 AS g_category,
+          0 AS g_class
+   FROM store_sales ,
+        date_dim d1 ,
+        item ,
+        store
+   WHERE d1.d_year = 2001
+     AND d1.d_date_sk = ss_sold_date_sk
+     AND i_item_sk = ss_item_sk
+     AND s_store_sk = ss_store_sk
+     AND s_state ='TN'
+   GROUP BY i_category,
+            i_class) ,
+     results_rollup AS
+  (SELECT gross_margin,
+          i_category,
+          i_class,
+          0 AS t_category,
+          0 AS t_class,
+          0 AS lochierarchy
+   FROM results
+   UNION SELECT (sum(ss_net_profit)*1.0000)/sum(ss_ext_sales_price) AS gross_margin,
+                i_category,
+                NULL AS i_class,
+                0 AS t_category,
+                1 AS t_class,
+                1 AS lochierarchy
+   FROM results
+   GROUP BY i_category
+   UNION SELECT (sum(ss_net_profit)*1.0000)/sum(ss_ext_sales_price) AS gross_margin,
+                NULL AS i_category,
+                NULL AS i_class,
+                1 AS t_category,
+                1 AS t_class,
+                2 AS lochierarchy
+   FROM results)
+SELECT gross_margin,
+       i_category,
+       i_class,
+       lochierarchy,
+       rank() OVER (PARTITION BY lochierarchy,
+                                  CASE
+                                      WHEN t_class = 0 THEN i_category
+                                  END
+                    ORDER BY gross_margin ASC) AS rank_within_parent
+FROM results_rollup
+ORDER BY lochierarchy DESC NULLS FIRST,
+         CASE
+             WHEN lochierarchy = 0 THEN i_category
+         END NULLS FIRST,
+         rank_within_parent NULLS FIRST
+LIMIT 100;
+----
+-0.433165203307 NULL NULL 2 1
+-0.442282138728 Jewelry NULL 1 1
+-0.440772279355 Men NULL 1 2
+-0.437870307573 Books NULL 1 3
+-0.435732438425 Music NULL 1 4
+-0.432691953602 Shoes NULL 1 5
+-0.432316232835 Sports NULL 1 6
+-0.431523238876 Children NULL 1 7
+-0.430921629365 Women NULL 1 8
+-0.426266087267 Electronics NULL 1 9
+-0.422405502607 Home NULL 1 10
+-0.418383701213 NULL NULL 1 11
+-0.608829345717 NULL glassware 0 1
+-0.539683858667 NULL womens 0 2
+-0.526747349575 NULL swimwear 0 3
+-0.484731072319 NULL dresses 0 4
+-0.456875929975 NULL flatware 0 5
+-0.448102702743 NULL pants 0 6
+-0.411535002141 NULL scanners 0 7
+-0.389753301641 NULL NULL 0 8
+-0.389037892861 NULL semi-precious 0 9
+-0.383586303544 NULL camcorders 0 10
+-0.378863841310 NULL archery 0 11
+-0.278683932298 NULL sports-apparel 0 12
+-0.695322604648 Books NULL 0 1
+-0.463763105747 Books reference 0 2
+-0.454878255415 Books sports 0 3
+-0.450711585875 Books history 0 4
+-0.444418960269 Books home repair 0 5
+-0.443892688616 Books entertainments 0 6
+-0.443340153259 Books cooking 0 7
+-0.441382709477 Books science 0 8
+-0.440374086736 Books romance 0 9
+-0.437733551966 Books mystery 0 10
+-0.436534326033 Books parenting 0 11
+-0.429541859412 Books travel 0 12
+-0.429379302015 Books business 0 13
+-0.426425915329 Books fiction 0 14
+-0.420168952912 Books arts 0 15
+-0.419309746900 Books self-help 0 16
+-0.416036416909 Books computers 0 17
+-0.452913284945 Children NULL 0 1
+-0.440579415366 Children toddlers 0 2
+-0.432941279545 Children newborn 0 3
+-0.426952333174 Children school-uniforms 0 4
+-0.425790542289 Children infants 0 5
+-0.485523575230 Electronics memory 0 1
+-0.460484200719 Electronics monitors 0 2
+-0.446190463216 Electronics automotive 0 3
+-0.442962249467 Electronics dvd/vcr players 0 4
+-0.432707346620 Electronics musical 0 5
+-0.426001069369 Electronics cameras 0 6
+-0.425420034131 Electronics wireless 0 7
+-0.422357518840 Electronics karoke 0 8
+-0.418894041472 Electronics camcorders 0 9
+-0.418687839417 Electronics audio 0 10
+-0.412560311912 Electronics televisions 0 11
+-0.410109041120 Electronics personal 0 12
+-0.409886895268 Electronics stereo 0 13
+-0.409450063744 Electronics scanners 0 14
+-0.408234342758 Electronics disk drives 0 15
+-0.375219377440 Electronics portable 0 16
+-0.443623313517 Home wallpaper 0 1
+-0.440255270469 Home furniture 0 2
+-0.438589183263 Home flatware 0 3
+-0.434840134821 Home decor 0 4
+-0.431923304826 Home rugs 0 5
+-0.430392313229 Home mattresses 0 6
+-0.428452890841 Home paint 0 7
+-0.425657185637 Home bedding 0 8
+-0.425048626457 Home accent 0 9
+-0.422952698833 Home tables 0 10
+-0.419455444756 Home bathroom 0 11
+-0.418254601208 Home curtains/drapes 0 12
+-0.415236802267 Home blinds/shades 0 13
+-0.412933008326 Home glassware 0 14
+-0.399787973271 Home lighting 0 15
+-0.377581583569 Home kids 0 16
+-0.360491558678 Home NULL 0 17
+-0.559405912586 Jewelry NULL 0 1
+-0.472982001814 Jewelry birdal 0 2
+-0.465589936277 Jewelry consignment 0 3
+-0.459507583916 Jewelry custom 0 4
+-0.458456596932 Jewelry semi-precious 0 5
+-0.454687676015 Jewelry loose stones 0 6
+-0.453552956394 Jewelry jewelry boxes 0 7
+-0.449396288947 Jewelry costume 0 8
+-0.445338893795 Jewelry bracelets 0 9
+-0.442823531422 Jewelry diamonds 0 10
+-0.442749867634 Jewelry earings 0 11
+-0.437306694185 Jewelry rings 0 12
+-0.436623345784 Jewelry gold 0 13
+-0.432260245803 Jewelry pendants 0 14
+-0.426688005867 Jewelry estate 0 15
+-0.402830426642 Jewelry mens watch 0 16
+-0.402009800818 Jewelry womens watch 0 17
+-0.617550324065 Men NULL 0 1
+-0.444874714008 Men pants 0 2
+-0.444534093806 Men sports-apparel 0 3
+-0.443115299044 Men shirts 0 4
+
+query I
+WITH web_v1 AS materialized
+  (SELECT ws_item_sk item_sk,
+          d_date,
+          sum(sum(ws_sales_price)) OVER (PARTITION BY ws_item_sk
+                                         ORDER BY d_date ROWS BETWEEN unbounded preceding AND CURRENT ROW) cume_sales
+   FROM web_sales,
+        date_dim
+   WHERE ws_sold_date_sk=d_date_sk
+     AND d_month_seq BETWEEN 1200 AND 1200+11
+     AND ws_item_sk IS NOT NULL
+   GROUP BY ws_item_sk,
+            d_date),
+     store_v1 AS materialized
+  (SELECT ss_item_sk item_sk,
+          d_date,
+          sum(sum(ss_sales_price)) OVER (PARTITION BY ss_item_sk
+                                         ORDER BY d_date ROWS BETWEEN unbounded preceding AND CURRENT ROW) cume_sales
+   FROM store_sales,
+        date_dim
+   WHERE ss_sold_date_sk=d_date_sk
+     AND d_month_seq BETWEEN 1200 AND 1200+11
+     AND ss_item_sk IS NOT NULL
+   GROUP BY ss_item_sk,
+            d_date)
+SELECT *
+FROM
+  (SELECT item_sk,
+          d_date,
+          web_sales,
+          store_sales,
+          max(web_sales) OVER (PARTITION BY item_sk
+                               ORDER BY d_date ROWS BETWEEN unbounded preceding AND CURRENT ROW) web_cumulative,
+                              max(store_sales) OVER (PARTITION BY item_sk
+                                                     ORDER BY d_date ROWS BETWEEN unbounded preceding AND CURRENT ROW) store_cumulative
+   FROM
+     (SELECT CASE
+                 WHEN web.item_sk IS NOT NULL THEN web.item_sk
+                 ELSE store.item_sk
+             END item_sk,
+             CASE
+                 WHEN web.d_date IS NOT NULL THEN web.d_date
+                 ELSE store.d_date
+             END d_date,
+             web.cume_sales web_sales,
+             store.cume_sales store_sales
+      FROM web_v1 web
+      FULL OUTER JOIN store_v1 store ON (web.item_sk = store.item_sk
+                                         AND web.d_date = store.d_date))x)y
+WHERE web_cumulative > store_cumulative
+ORDER BY item_sk NULLS FIRST,
+         d_date NULLS FIRST
+LIMIT 100;
+----
+5 2000-01-25 193.18 NULL 193.18 93.88
+5 2000-01-29 NULL 162.45 193.18 162.45
+5 2000-01-31 NULL 184.53 193.18 184.53
+5 2000-02-23 NULL 189.68 193.18 189.68
+11 2000-03-05 151.26 NULL 151.26 94.43
+14 2000-01-10 135.98 NULL 135.98 73.88
+14 2000-01-29 141.97 NULL 141.97 73.88
+14 2000-02-02 188.37 NULL 188.37 73.88
+14 2000-02-08 NULL 132.92 188.37 132.92
+14 2000-02-19 NULL 136.67 188.37 136.67
+14 2000-02-21 232.68 NULL 232.68 136.67
+14 2000-02-22 NULL 167.46 232.68 167.46
+14 2000-03-28 457.10 NULL 457.10 243.42
+14 2000-03-31 462.73 NULL 462.73 243.42
+14 2000-04-05 NULL 248.54 462.73 248.54
+14 2000-04-15 558.42 NULL 558.42 248.54
+14 2000-04-27 NULL 252.33 558.42 252.33
+14 2000-05-03 NULL 318.57 558.42 318.57
+14 2000-05-10 558.81 NULL 558.81 318.57
+14 2000-05-21 NULL 322.10 558.81 322.10
+14 2000-05-26 696.78 NULL 696.78 322.10
+14 2000-05-29 NULL 322.10 696.78 322.10
+14 2000-06-20 NULL 365.27 696.78 365.27
+14 2000-07-03 719.18 NULL 719.18 365.27
+14 2000-07-07 NULL 417.26 719.18 417.26
+14 2000-07-18 NULL 430.50 719.18 430.50
+14 2000-07-25 861.03 NULL 861.03 430.50
+14 2000-08-10 NULL 436.52 861.03 436.52
+14 2000-08-14 NULL 473.95 861.03 473.95
+14 2000-08-21 NULL 507.13 861.03 507.13
+14 2000-08-26 NULL 509.91 861.03 509.91
+14 2000-08-28 NULL 575.33 861.03 575.33
+14 2000-08-31 NULL 647.81 861.03 647.81
+14 2000-09-01 NULL 700.73 861.03 700.73
+14 2000-09-02 914.24 767.83 914.24 767.83
+14 2000-09-03 NULL 844.80 914.24 844.80
+19 2000-01-02 171.64 57.07 171.64 57.07
+20 2000-01-09 37.64 NULL 37.64 7.25
+25 2000-01-28 145.80 NULL 145.80 37.63
+25 2000-02-09 NULL 40.98 145.80 40.98
+25 2000-02-11 NULL 139.21 145.80 139.21
+25 2000-02-21 NULL 143.19 145.80 143.19
+32 2000-02-22 76.51 NULL 76.51 53.06
+35 2000-01-14 NULL 40.94 95.44 40.94
+37 2000-01-02 106.22 43.81 106.22 43.81
+37 2000-01-04 NULL 106.03 106.22 106.03
+37 2000-01-05 136.71 NULL 136.71 106.03
+37 2000-01-06 NULL 111.82 136.71 111.82
+37 2000-01-24 NULL 134.51 136.71 134.51
+37 2000-02-04 176.29 NULL 176.29 145.13
+37 2000-02-07 NULL 145.13 176.29 145.13
+37 2000-02-26 NULL 149.83 176.29 149.83
+37 2000-03-14 NULL 161.01 176.29 161.01
+37 2000-03-15 NULL 164.40 176.29 164.40
+37 2000-03-16 NULL 164.40 176.29 164.40
+37 2000-03-21 203.97 NULL 203.97 164.40
+37 2000-04-03 208.51 NULL 208.51 164.40
+37 2000-04-05 263.04 NULL 263.04 164.40
+37 2000-04-07 367.78 NULL 367.78 164.40
+37 2000-04-10 NULL 203.26 367.78 203.26
+37 2000-05-04 446.26 NULL 446.26 203.26
+37 2000-05-09 NULL 300.02 446.26 300.02
+37 2000-05-13 507.85 NULL 507.85 300.02
+37 2000-05-23 NULL 319.79 507.85 319.79
+37 2000-06-21 NULL 355.11 507.85 355.11
+37 2000-06-26 NULL 392.21 507.85 392.21
+37 2000-07-15 NULL 394.18 507.85 394.18
+37 2000-07-17 NULL 396.94 507.85 396.94
+37 2000-07-24 519.67 NULL 519.67 396.94
+37 2000-08-04 NULL 507.14 519.67 507.14
+37 2000-08-13 NULL 512.20 519.67 512.20
+37 2000-08-14 NULL 518.76 519.67 518.76
+41 2000-01-21 NULL 72.70 115.36 72.70
+47 2000-01-19 NULL 95.71 113.23 95.71
+47 2000-02-17 146.76 NULL 146.76 146.27
+53 2000-01-08 38.38 NULL 38.38 7.50
+53 2000-01-09 61.72 NULL 61.72 7.50
+53 2000-01-15 NULL 31.20 61.72 31.20
+61 2000-01-02 64.44 7.73 64.44 7.73
+61 2000-01-07 79.56 33.81 79.56 33.81
+61 2000-02-17 257.98 NULL 257.98 189.63
+61 2000-03-01 NULL 240.65 257.98 240.65
+65 2000-01-03 71.96 NULL 71.96 66.75
+68 2000-01-19 14.25 NULL 14.25 6.38
+68 2000-01-21 NULL 8.61 14.25 8.61
+71 2000-01-02 35.36 2.26 35.36 2.26
+71 2000-01-11 NULL 6.59 35.36 6.59
+86 2000-01-19 83.91 NULL 83.91 2.39
+98 2000-01-18 20.64 NULL 20.64 20.14
+98 2000-03-29 233.74 NULL 233.74 219.29
+98 2000-04-23 462.63 284.52 462.63 284.52
+98 2000-05-01 NULL 413.39 462.63 413.39
+98 2000-05-06 NULL 438.37 462.63 438.37
+101 2000-01-27 NULL 51.36 102.93 51.36
+101 2000-02-07 147.16 NULL 147.16 51.36
+101 2000-05-02 411.55 NULL 411.55 367.06
+101 2000-05-12 418.18 NULL 418.18 367.06
+101 2000-06-19 576.37 NULL 576.37 522.55
+110 2000-01-16 NULL 2.66 91.38 2.66
+110 2000-01-21 NULL 80.55 91.38 80.55
+
+query I
+WITH my_customers AS materialized
+  (SELECT DISTINCT c_customer_sk,
+                   c_current_addr_sk
+   FROM
+     (SELECT cs_sold_date_sk sold_date_sk,
+             cs_bill_customer_sk customer_sk,
+             cs_item_sk item_sk
+      FROM catalog_sales
+      UNION ALL SELECT ws_sold_date_sk sold_date_sk,
+                       ws_bill_customer_sk customer_sk,
+                       ws_item_sk item_sk
+      FROM web_sales) cs_or_ws_sales,
+        item,
+        date_dim,
+        customer
+   WHERE sold_date_sk = d_date_sk
+     AND item_sk = i_item_sk
+     AND i_category = 'Women'
+     AND i_class = 'maternity'
+     AND c_customer_sk = cs_or_ws_sales.customer_sk
+     AND d_moy = 12
+     AND d_year = 1998 ),
+     my_revenue AS
+  (SELECT c_customer_sk,
+          sum(ss_ext_sales_price) AS revenue
+   FROM my_customers,
+        store_sales,
+        customer_address,
+        store,
+        date_dim
+   WHERE c_current_addr_sk = ca_address_sk
+     AND ca_county = s_county
+     AND ca_state = s_state
+     AND ss_sold_date_sk = d_date_sk
+     AND c_customer_sk = ss_customer_sk
+     AND d_month_seq BETWEEN
+       (SELECT DISTINCT d_month_seq+1
+        FROM date_dim
+        WHERE d_year = 1998
+          AND d_moy = 12) AND
+       (SELECT DISTINCT d_month_seq+3
+        FROM date_dim
+        WHERE d_year = 1998
+          AND d_moy = 12)
+   GROUP BY c_customer_sk),
+     segments AS
+  (SELECT cast(round(revenue/50) AS int) AS SEGMENT
+   FROM my_revenue)
+SELECT SEGMENT,
+       count(*) AS num_customers,
+       SEGMENT*50 AS segment_base
+FROM segments
+GROUP BY SEGMENT
+ORDER BY SEGMENT NULLS FIRST,
+         num_customers NULLS FIRST,
+         segment_base
+LIMIT 100;
+----
+10715 1 535750
+
+query I
+WITH ss AS materialized
+  (SELECT i_item_id,
+          sum(ss_ext_sales_price) total_sales
+   FROM store_sales,
+        date_dim,
+        customer_address,
+        item
+   WHERE i_item_id IN
+       (SELECT i_item_id
+        FROM item
+        WHERE i_color IN ('slate',
+                          'blanched',
+                          'burnished'))
+     AND ss_item_sk = i_item_sk
+     AND ss_sold_date_sk = d_date_sk
+     AND d_year = 2001
+     AND d_moy = 2
+     AND ss_addr_sk = ca_address_sk
+     AND ca_gmt_offset = -5
+   GROUP BY i_item_id),
+     cs AS materialized
+  (SELECT i_item_id,
+          sum(cs_ext_sales_price) total_sales
+   FROM catalog_sales,
+        date_dim,
+        customer_address,
+        item
+   WHERE i_item_id IN
+       (SELECT i_item_id
+        FROM item
+        WHERE i_color IN ('slate',
+                          'blanched',
+                          'burnished'))
+     AND cs_item_sk = i_item_sk
+     AND cs_sold_date_sk = d_date_sk
+     AND d_year = 2001
+     AND d_moy = 2
+     AND cs_bill_addr_sk = ca_address_sk
+     AND ca_gmt_offset = -5
+   GROUP BY i_item_id),
+     ws AS materialized
+  (SELECT i_item_id,
+          sum(ws_ext_sales_price) total_sales
+   FROM web_sales,
+        date_dim,
+        customer_address,
+        item
+   WHERE i_item_id IN
+       (SELECT i_item_id
+        FROM item
+        WHERE i_color IN ('slate',
+                          'blanched',
+                          'burnished'))
+     AND ws_item_sk = i_item_sk
+     AND ws_sold_date_sk = d_date_sk
+     AND d_year = 2001
+     AND d_moy = 2
+     AND ws_bill_addr_sk = ca_address_sk
+     AND ca_gmt_offset = -5
+   GROUP BY i_item_id)
+SELECT i_item_id,
+       sum(total_sales) total_sales
+FROM
+  (SELECT *
+   FROM ss
+   UNION ALL SELECT *
+   FROM cs
+   UNION ALL SELECT *
+   FROM ws) tmp1
+GROUP BY i_item_id
+ORDER BY total_sales  NULLS FIRST,
+         i_item_id NULLS FIRST
+LIMIT 100;
+----
+AAAAAAAAMBNDAAAA NULL
+AAAAAAAAMOAAAAAA NULL
+AAAAAAAAEMICAAAA 0.00
+AAAAAAAAEPDEAAAA 0.00
+AAAAAAAAAPABAAAA 5.85
+AAAAAAAANEFAAAAA 6.93
+AAAAAAAADOIDAAAA 8.36
+AAAAAAAAEJLBAAAA 10.28
+AAAAAAAAINGBAAAA 13.57
+AAAAAAAAGNDDAAAA 17.85
+AAAAAAAAKFFCAAAA 21.21
+AAAAAAAAOKNBAAAA 29.54
+AAAAAAAAMEKAAAAA 29.75
+AAAAAAAABIDEAAAA 31.93
+AAAAAAAAKMPAAAAA 51.45
+AAAAAAAAKEGCAAAA 63.10
+AAAAAAAACPIBAAAA 66.25
+AAAAAAAAIKFAAAAA 74.63
+AAAAAAAAJHNCAAAA 80.08
+AAAAAAAAMGCCAAAA 80.32
+AAAAAAAANDHCAAAA 84.15
+AAAAAAAAKMCCAAAA 84.96
+AAAAAAAAIBBAAAAA 91.26
+AAAAAAAAOLPAAAAA 95.60
+AAAAAAAAAPDBAAAA 99.72
+AAAAAAAACIBAAAAA 102.08
+AAAAAAAAEOIDAAAA 127.40
+AAAAAAAAGHBCAAAA 153.79
+AAAAAAAAGJHDAAAA 158.46
+AAAAAAAAKFNDAAAA 161.70
+AAAAAAAAHHBBAAAA 164.28
+AAAAAAAAIOAAAAAA 166.04
+AAAAAAAAJGBDAAAA 182.85
+AAAAAAAALNHDAAAA 193.80
+AAAAAAAAMKAEAAAA 208.50
+AAAAAAAAGLIDAAAA 208.62
+AAAAAAAAKPKCAAAA 224.98
+AAAAAAAAOFDAAAAA 251.22
+AAAAAAAAKOPBAAAA 251.25
+AAAAAAAANFPBAAAA 285.84
+AAAAAAAAONBAAAAA 290.40
+AAAAAAAAEGPAAAAA 292.22
+AAAAAAAADEJAAAAA 295.24
+AAAAAAAAFBGBAAAA 326.16
+AAAAAAAAJHGDAAAA 327.31
+AAAAAAAAIDECAAAA 332.35
+AAAAAAAAELHAAAAA 362.02
+AAAAAAAAEKCDAAAA 365.50
+AAAAAAAAPLEBAAAA 367.40
+AAAAAAAAOFECAAAA 384.26
+AAAAAAAAGBPBAAAA 385.65
+AAAAAAAAEGDDAAAA 409.04
+AAAAAAAAMACAAAAA 427.59
+AAAAAAAAEHKBAAAA 432.25
+AAAAAAAAINHAAAAA 438.38
+AAAAAAAAEPPBAAAA 444.88
+AAAAAAAAOICEAAAA 473.24
+AAAAAAAAEMHCAAAA 484.38
+AAAAAAAADGDEAAAA 502.18
+AAAAAAAAANCBAAAA 529.56
+AAAAAAAAAFNBAAAA 529.83
+AAAAAAAAHOBDAAAA 538.18
+AAAAAAAAHAFEAAAA 544.50
+AAAAAAAACNACAAAA 548.34
+AAAAAAAAOCEAAAAA 588.39
+AAAAAAAAEMDBAAAA 592.32
+AAAAAAAAGANAAAAA 603.09
+AAAAAAAACCOBAAAA 604.80
+AAAAAAAAMBNAAAAA 619.18
+AAAAAAAAKNCEAAAA 621.26
+AAAAAAAAKDGDAAAA 633.24
+AAAAAAAAABLBAAAA 636.50
+AAAAAAAAKIEEAAAA 638.91
+AAAAAAAAGMGBAAAA 641.58
+AAAAAAAAENCBAAAA 643.55
+AAAAAAAAIGBEAAAA 663.52
+AAAAAAAAGBEAAAAA 694.20
+AAAAAAAAHIOCAAAA 694.88
+AAAAAAAAAELCAAAA 707.52
+AAAAAAAACENDAAAA 744.50
+AAAAAAAAIOCEAAAA 755.65
+AAAAAAAAKGFBAAAA 780.07
+AAAAAAAADIBBAAAA 795.40
+AAAAAAAAGIOBAAAA 796.95
+AAAAAAAAJBCEAAAA 821.26
+AAAAAAAAKFKBAAAA 832.56
+AAAAAAAANNEBAAAA 835.12
+AAAAAAAALOCEAAAA 885.78
+AAAAAAAAKPFEAAAA 898.56
+AAAAAAAAAEGAAAAA 901.81
+AAAAAAAACAPCAAAA 909.96
+AAAAAAAAIKCAAAAA 919.81
+AAAAAAAALFADAAAA 930.80
+AAAAAAAAMMCAAAAA 933.98
+AAAAAAAACCPAAAAA 936.08
+AAAAAAAAKCABAAAA 944.85
+AAAAAAAAALIBAAAA 962.70
+AAAAAAAAKMBCAAAA 977.68
+AAAAAAAAAPNBAAAA 985.01
+AAAAAAAAIKNBAAAA 1005.17
+
+query I
+WITH ss_items AS materialized
+  (SELECT i_item_id item_id,
+          sum(ss_ext_sales_price) ss_item_rev
+   FROM store_sales,
+        item,
+        date_dim
+   WHERE ss_item_sk = i_item_sk
+     AND d_date IN
+       (SELECT d_date
+        FROM date_dim
+        WHERE d_week_seq =
+            (SELECT d_week_seq
+             FROM date_dim
+             WHERE d_date = '2000-01-03'))
+     AND ss_sold_date_sk = d_date_sk
+   GROUP BY i_item_id),
+     cs_items AS materialized
+  (SELECT i_item_id item_id,
+          sum(cs_ext_sales_price) cs_item_rev
+   FROM catalog_sales,
+        item,
+        date_dim
+   WHERE cs_item_sk = i_item_sk
+     AND d_date IN
+       (SELECT d_date
+        FROM date_dim
+        WHERE d_week_seq =
+            (SELECT d_week_seq
+             FROM date_dim
+             WHERE d_date = '2000-01-03'))
+     AND cs_sold_date_sk = d_date_sk
+   GROUP BY i_item_id),
+     ws_items AS materialized
+  (SELECT i_item_id item_id,
+          sum(ws_ext_sales_price) ws_item_rev
+   FROM web_sales,
+        item,
+        date_dim
+   WHERE ws_item_sk = i_item_sk
+     AND d_date IN
+       (SELECT d_date
+        FROM date_dim
+        WHERE d_week_seq =
+            (SELECT d_week_seq
+             FROM date_dim
+             WHERE d_date = '2000-01-03'))
+     AND ws_sold_date_sk = d_date_sk
+   GROUP BY i_item_id)
+SELECT ss_items.item_id,
+       ss_item_rev,
+       ss_item_rev/((ss_item_rev+cs_item_rev+ws_item_rev)/3) * 100 ss_dev,
+       cs_item_rev,
+       cs_item_rev/((ss_item_rev+cs_item_rev+ws_item_rev)/3) * 100 cs_dev,
+       ws_item_rev,
+       ws_item_rev/((ss_item_rev+cs_item_rev+ws_item_rev)/3) * 100 ws_dev,
+       (ss_item_rev+cs_item_rev+ws_item_rev)/3 average
+FROM ss_items,
+     cs_items,
+     ws_items
+WHERE ss_items.item_id=cs_items.item_id
+  AND ss_items.item_id=ws_items.item_id
+  AND ss_item_rev BETWEEN 0.9 * cs_item_rev AND 1.1 * cs_item_rev
+  AND ss_item_rev BETWEEN 0.9 * ws_item_rev AND 1.1 * ws_item_rev
+  AND cs_item_rev BETWEEN 0.9 * ss_item_rev AND 1.1 * ss_item_rev
+  AND cs_item_rev BETWEEN 0.9 * ws_item_rev AND 1.1 * ws_item_rev
+  AND ws_item_rev BETWEEN 0.9 * ss_item_rev AND 1.1 * ss_item_rev
+  AND ws_item_rev BETWEEN 0.9 * cs_item_rev AND 1.1 * cs_item_rev
+ORDER BY ss_items.item_id NULLS FIRST,
+         ss_item_rev NULLS FIRST
+LIMIT 100;
+----
+AAAAAAAAEHEBAAAA 4112.78 103.71926500 3968.80 100.08826600 3814.32 96.19247000 3965.30000000
+AAAAAAAAFDKBAAAA 4262.34 100.98281800 4141.02 98.10852000 4259.21 100.90866200 4220.85666667
+AAAAAAAAGOPDAAAA 2005.56 105.04879100 1840.35 96.39529200 1881.60 98.55591700 1909.17000000
+AAAAAAAAOMOAAAAA 2749.75 95.33299700 2989.31 103.63846900 2914.03 101.02853400 2884.36333333
+AAAAAAAAPGOCAAAA 1343.90 96.28975100 1408.53 100.92045700 1434.62 102.78979200 1395.68333333
+
+query I
+WITH year_total AS materialized
+  (SELECT c_customer_id customer_id,
+          c_first_name customer_first_name,
+          c_last_name customer_last_name,
+          d_year AS year_,
+          sum(ss_net_paid) year_total,
+          's' sale_type
+   FROM customer,
+        store_sales,
+        date_dim
+   WHERE c_customer_sk = ss_customer_sk
+     AND ss_sold_date_sk = d_date_sk
+     AND d_year IN (2001,
+                    2001+1)
+   GROUP BY c_customer_id,
+            c_first_name,
+            c_last_name,
+            d_year
+   UNION ALL SELECT c_customer_id customer_id,
+                    c_first_name customer_first_name,
+                    c_last_name customer_last_name,
+                    d_year AS year_,
+                    sum(ws_net_paid) year_total,
+                    'w' sale_type
+   FROM customer,
+        web_sales,
+        date_dim
+   WHERE c_customer_sk = ws_bill_customer_sk
+     AND ws_sold_date_sk = d_date_sk
+     AND d_year IN (2001,
+                    2001+1)
+   GROUP BY c_customer_id,
+            c_first_name,
+            c_last_name,
+            d_year)
+SELECT t_s_secyear.customer_id,
+       t_s_secyear.customer_first_name,
+       t_s_secyear.customer_last_name
+FROM year_total t_s_firstyear,
+     year_total t_s_secyear,
+     year_total t_w_firstyear,
+     year_total t_w_secyear
+WHERE t_s_secyear.customer_id = t_s_firstyear.customer_id
+  AND t_s_firstyear.customer_id = t_w_secyear.customer_id
+  AND t_s_firstyear.customer_id = t_w_firstyear.customer_id
+  AND t_s_firstyear.sale_type = 's'
+  AND t_w_firstyear.sale_type = 'w'
+  AND t_s_secyear.sale_type = 's'
+  AND t_w_secyear.sale_type = 'w'
+  AND t_s_firstyear.year_ = 2001
+  AND t_s_secyear.year_ = 2001+1
+  AND t_w_firstyear.year_ = 2001
+  AND t_w_secyear.year_ = 2001+1
+  AND t_s_firstyear.year_total > 0
+  AND t_w_firstyear.year_total > 0
+  AND CASE
+          WHEN t_w_firstyear.year_total > 0 THEN t_w_secyear.year_total / t_w_firstyear.year_total
+          ELSE NULL
+      END > CASE
+                WHEN t_s_firstyear.year_total > 0 THEN t_s_secyear.year_total / t_s_firstyear.year_total
+                ELSE NULL
+            END
+ORDER BY 1 NULLS FIRST
+LIMIT 100;
+----
+AAAAAAAAAEDMAAAA Tricia Medina
+AAAAAAAAAFGBBAAA Howard Major
+AAAAAAAAAMGDAAAA Kenneth Harlan
+AAAAAAAAAOPFBAAA Jerry Fields
+AAAAAAAABIJBAAAA James White
+AAAAAAAABKOPAAAA Gary NULL
+AAAAAAAABNBBAAAA Irma Smith
+AAAAAAAACADPAAAA Cristobal Thomas
+AAAAAAAACCDEAAAA Samantha Paul
+AAAAAAAACFCGBAAA Marcus Sanders
+AAAAAAAACFEEAAAA Linda Hollis
+AAAAAAAACFENAAAA Christopher Dawson
+AAAAAAAACHLMAAAA Jenny Dukes
+AAAAAAAACIJMAAAA Elizabeth Thomas
+AAAAAAAACJBLAAAA Janie Guzman
+AAAAAAAACJDIAAAA James Kerr
+AAAAAAAACKAJAAAA Rose Olsen
+AAAAAAAADAEDAAAA Bernice Pearson
+AAAAAAAADBEFBAAA Bennie Bowers
+AAAAAAAADCKOAAAA Robert Gonzalez
+AAAAAAAADFIEBAAA John Gray
+AAAAAAAADFKABAAA Latoya Craft
+AAAAAAAADHOCAAAA Lisa East
+AAAAAAAADIIOAAAA David Carroll
+AAAAAAAADIJGBAAA Ruth Sanders
+AAAAAAAADJLFBAAA Christopher Garcia
+AAAAAAAADLHBBAAA Henry Bertrand
+AAAAAAAAEADJAAAA Ruth Carroll
+AAAAAAAAEDIABAAA Robert Wall
+AAAAAAAAEHBDBAAA Theodore Hoover
+AAAAAAAAEJDLAAAA Alice Wright
+AAAAAAAAEKFPAAAA Annika Chin
+AAAAAAAAEOAKAAAA Molly Benjamin
+AAAAAAAAFBAHAAAA Michael Williams
+AAAAAAAAFBLCBAAA Tanya Mcgovern
+AAAAAAAAFGIGAAAA Eduardo Miller
+AAAAAAAAFJHFAAAA Larissa Roy
+AAAAAAAAFMGHAAAA Patsy Holmes
+AAAAAAAAFMHIAAAA Emilio Darling
+AAAAAAAAFOGIAAAA Michelle Greene
+AAAAAAAAFOJAAAAA Don Castillo
+AAAAAAAAGAACAAAA David Haskins
+AAAAAAAAGFMDBAAA Kathleen Gibson
+AAAAAAAAHGOABAAA Sonia White
+AAAAAAAAHHCABAAA William Stewart
+AAAAAAAAHHEBBAAA Sherrill Fry
+AAAAAAAAHJLAAAAA Audrey Beltran
+AAAAAAAAHMJNAAAA Ryan Baptiste
+AAAAAAAAHNFHAAAA Rebecca Wilson
+AAAAAAAAIADEBAAA Diane Aldridge
+AAAAAAAAIBFCBAAA Ruth Grantham
+AAAAAAAAIBHHAAAA Jennifer Ballard
+AAAAAAAAICHFAAAA Linda Mccoy
+AAAAAAAAIDKFAAAA Michael Mack
+AAAAAAAAIENBBAAA Jenna Gray
+AAAAAAAAIHEFBAAA Jeffrey Johnson
+AAAAAAAAIJEMAAAA Charlie Cummings
+AAAAAAAAILABAAAA Anthony Guenther
+AAAAAAAAIMHBAAAA Kathy Knowles
+AAAAAAAAJAIMAAAA Geraldine German
+AAAAAAAAJDBLAAAA Melvin Taylor
+AAAAAAAAJGMMAAAA Richard Larson
+AAAAAAAAJIALAAAA Santos Gutierrez
+AAAAAAAAJKBNAAAA Julie Kern
+AAAAAAAAJMHLAAAA Wanda Ryan
+AAAAAAAAJPINAAAA Rose Waite
+AAAAAAAAKAECAAAA Milton Mackey
+AAAAAAAAKBCABAAA Debra Bell
+AAAAAAAAKJBKAAAA Georgia Scott
+AAAAAAAAKJBLAAAA Kerry Davis
+AAAAAAAAKLHHBAAA Manuel Castaneda
+AAAAAAAALFKKAAAA Ignacio Miller
+AAAAAAAALHMCAAAA Brooke Nelson
+AAAAAAAALINNAAAA NULL Buckley
+AAAAAAAALIOPAAAA Derek Allen
+AAAAAAAALOCIBAAA Elaine Walden
+AAAAAAAAMFPFBAAA Jamie Woods
+AAAAAAAAMMOBBAAA Margaret Smith
+AAAAAAAANGDBBAAA Carlos Jewell
+AAAAAAAANJAMAAAA Thaddeus Griffin
+AAAAAAAANJHCBAAA Christopher Schreiber
+AAAAAAAANJOLAAAA Debra Underwood
+AAAAAAAAOBADBAAA Elizabeth Burnham
+AAAAAAAAOBLPAAAA Willie Mckeown
+AAAAAAAAOFLCAAAA James Taylor
+AAAAAAAAOPDLAAAA Ann Pence
+AAAAAAAAPEPCBAAA Amanda Tillman
+AAAAAAAAPICEAAAA Jennifer Cortez
+AAAAAAAAPJENAAAA Ashley Norton
+AAAAAAAAPJOIAAAA Beverly Hart
+AAAAAAAAPKBCBAAA Andrea White
+AAAAAAAAPKIKAAAA Wendy Horvath
+
+# Q95
+query I
+WITH ws_wh AS materialized
+  (SELECT ws1.ws_order_number,
+          ws1.ws_warehouse_sk wh1,
+          ws2.ws_warehouse_sk wh2
+   FROM web_sales ws1,
+        web_sales ws2
+   WHERE ws1.ws_order_number = ws2.ws_order_number
+     AND ws1.ws_warehouse_sk <> ws2.ws_warehouse_sk)
+SELECT count(DISTINCT ws_order_number) AS "order count" ,
+       sum(ws_ext_ship_cost) AS "total shipping cost" ,
+       sum(ws_net_profit) AS "total net profit"
+FROM web_sales ws1 ,
+     date_dim ,
+     customer_address ,
+     web_site
+WHERE d_date BETWEEN '1999-02-01' AND cast('1999-04-02' AS date)
+  AND ws1.ws_ship_date_sk = d_date_sk
+  AND ws1.ws_ship_addr_sk = ca_address_sk
+  AND ca_state = 'IL'
+  AND ws1.ws_web_site_sk = web_site_sk
+  AND web_company_name = 'pri'
+  AND ws1.ws_order_number IN
+    (SELECT ws_order_number
+     FROM ws_wh)
+  AND ws1.ws_order_number IN
+    (SELECT wr_order_number
+     FROM web_returns,
+          ws_wh
+     WHERE wr_order_number = ws_wh.ws_order_number)
+ORDER BY count(DISTINCT ws_order_number)
+LIMIT 100;
+----
+68 100592.32 -18202.90

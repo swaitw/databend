@@ -1,0 +1,122 @@
+statement ok
+CREATE OR REPLACE TABLE monthly_sales(empid INT, amount INT, month TEXT);
+
+statement ok
+INSERT INTO monthly_sales VALUES
+    (1, 10000, 'JAN'),
+    (1, 400, 'JAN'),
+    (2, 4500, 'JAN'),
+    (2, 35000, 'JAN'),
+    (1, 5000, 'FEB'),
+    (1, 3000, 'FEB'),
+    (2, 200, 'FEB'),
+    (2, 90500, 'FEB'),
+    (1, 6000, 'MAR'),
+    (1, 5000, 'MAR'),
+    (2, 2500, 'MAR'),
+    (2, 9500, 'MAR'),
+    (1, 8000, 'APR'),
+    (1, 10000, 'APR'),
+    (2, 800, 'APR'),
+    (2, 4500, 'APR');
+
+query IIIII
+SELECT empid,jan,feb,mar,apr FROM (
+    SELECT *
+        FROM monthly_sales
+            PIVOT(SUM(amount) FOR MONTH IN ('JAN', 'FEB', 'MAR', 'APR'))
+        ORDER BY EMPID
+);
+----
+1	10400	8000	11000	18000
+2	39500	90700	12000	5300
+
+query IRRRR
+SELECT empid,jan,feb,mar,apr FROM (
+    SELECT *
+        FROM monthly_sales
+            PIVOT(AVG(amount) FOR MONTH IN ('JAN', 'FEB', 'MAR', 'APR'))
+        ORDER BY EMPID
+);
+----
+1	5200.0	4000.0	5500.0	9000.0
+2	19750.0	45350.0	6000.0	2650.0
+
+query IIIII
+SELECT EMPID,
+    SUM_IF(AMOUNT,MONTH = 'JAN') AS JAN,
+    SUM_IF(AMOUNT,MONTH = 'FEB') AS FEB,
+    SUM_IF(AMOUNT,MONTH = 'MAR') AS MAR,
+    SUM_IF(AMOUNT,MONTH = 'APR') AS APR
+    FROM monthly_sales
+    GROUP BY EMPID
+    ORDER BY EMPID;
+----
+1	10400	8000	11000	18000
+2	39500	90700	12000	5300
+
+query IIIII
+SELECT empid,jan,feb,mar,apr FROM (
+    SELECT *
+        FROM (SELECT * FROM monthly_sales)
+            PIVOT(SUM(amount) FOR MONTH IN ('JAN', 'FEB', 'MAR', 'APR'))
+        ORDER BY EMPID
+);
+----
+1	10400	8000	11000	18000
+2	39500	90700	12000	5300
+
+query IIIII
+SELECT empid,jan,feb,mar,apr FROM (
+    SELECT *
+        FROM monthly_sales
+            PIVOT(SUM(amount) FOR MONTH IN (SELECT DISTINCT month FROM monthly_sales))
+        ORDER BY EMPID
+);
+----
+1	10400	8000	11000	18000
+2	39500	90700	12000	5300
+
+query IIIII
+SELECT empid,jan,feb,mar,apr FROM (
+    SELECT *
+        FROM (SELECT * FROM monthly_sales)
+            PIVOT(SUM(amount) FOR MONTH IN (SELECT DISTINCT month FROM monthly_sales))
+        ORDER BY EMPID
+);
+----
+1	10400	8000	11000	18000
+2	39500	90700	12000	5300
+
+statement error 1065
+SELECT empid,jan,feb,mar,apr FROM (
+    SELECT *
+        FROM monthly_sales
+            PIVOT(SUM(amount) FOR MONTH IN (SELECT DISTINCT month, month FROM monthly_sales))
+        ORDER BY EMPID
+);
+
+statement error 1065
+SELECT empid,jan,feb,mar,apr FROM (
+    SELECT *
+        FROM monthly_sales
+            PIVOT(SUM(amount) FOR MONTH IN (SELECT DISTINCT empid FROM monthly_sales))
+        ORDER BY EMPID
+);
+
+statement ok
+CREATE OR REPLACE TABLE test_table ("DATA_TIME" timestamp, "METRIC_CODE" string, "VALUE" decimal(16,4));
+
+statement ok
+insert into test_table values ('2024-09-30 14:09:36.000', '0101', 3.5128);
+
+query TR
+SELECT * FROM test_table PIVOT(avg("VALUE") FOR "METRIC_CODE" IN ('0101'));
+----
+2024-09-30 14:09:36.000000	3.5128
+
+statement ok
+drop table monthly_sales;
+
+statement ok
+drop table test_table;

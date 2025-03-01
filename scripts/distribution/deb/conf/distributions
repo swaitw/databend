@@ -1,0 +1,7 @@
+Origin: Databend
+Label: databend
+Codename: stable
+Architectures: arm64 amd64
+Components: main
+Description: Apt repository for databend
+SignWith: 331121067B94BA2339A7735036E98EBBE94E4794

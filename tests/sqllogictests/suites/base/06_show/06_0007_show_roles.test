@@ -1,0 +1,17 @@
+statement ok
+CREATE ROLE IF NOT EXISTS test
+
+query T
+select name from system.roles;
+----
+account_admin
+public
+test
+
+query T
+show roles like 'account_admin';
+----
+account_admin 0 (empty) 1 1
+
+statement ok
+DROP ROLE test

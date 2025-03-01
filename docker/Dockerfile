@@ -1,13 +1,17 @@
-FROM rust:1.48.0-buster AS builder
+FROM debian:bookworm
 
-COPY ./ /app
-WORKDIR /app
-RUN make setup
-RUN make build
+ARG TARGETPLATFORM
 
-FROM debian:buster
-COPY --from=builder /app/target/release/databend-query /databend-query
-COPY --from=builder /app/target/release/databend-meta /databend-meta
-COPY --from=builder /app/docker/databend-query-docker.toml /databend-query.toml
-COPY --from=builder /app/docker/bootstrap.sh /bootstrap.sh
-ENTRYPOINT ["/bootstrap.sh"]
+RUN apt-get update -y && \
+    apt-get install -y apt-transport-https ca-certificates curl xxd dumb-init && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/* && \
+    rm -rf /var/cache/apt/*
+
+COPY ./distro/$TARGETPLATFORM/databend-meta /usr/bin/databend-meta
+COPY ./distro/$TARGETPLATFORM/databend-query /usr/bin/databend-query
+COPY ./docker/query-config.toml /etc/databend/query_config_spec.toml
+COPY ./docker/bootstrap.sh /bootstrap.sh
+ENTRYPOINT [ "dumb-init", "--", "/bootstrap.sh"]
+VOLUME [ "/var/log/databend", "/etc/databend", "/var/lib/databend", "/var/lib/minio" ]
+EXPOSE 3307 8124 8000 8900
